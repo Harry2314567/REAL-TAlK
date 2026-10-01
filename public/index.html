@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real Talk - WebRTC Walkie Talkie</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    
+    .card { background: #1e1e1e; padding: 25px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; text-align: center; }
+    h2 { color: #00e676; margin-bottom: 15px; letter-spacing: 1px; }
+    
+    input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #333; background: #2a2a2a; color: white; border-radius: 8px; font-size: 14px; outline: none; }
+    input:focus { border-color: #00e676; }
+    
+    button.btn { width: 100%; padding: 12px; background: #00e676; color: #121212; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; font-size: 16px; transition: 0.2s; }
+    button.btn:hover { background: #00b359; }
+    
+    .hidden { display: none; }
+
+    .member-list { margin: 15px 0; background: #2a2a2a; border-radius: 8px; padding: 10px; max-height: 180px; overflow-y: auto; text-align: left; }
+    .member-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #3a3a3a; font-size: 14px; }
+    .member-item:last-child { border-bottom: none; }
+    .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #444; color: #ccc; }
+    .status-badge.speaking { background: #00e676; color: #000; font-weight: bold; animation: pulse 1s infinite; }
+
+    .ptt-btn { width: 140px; height: 140px; border-radius: 50%; background: #2a2a2a; border: 4px solid #00e676; color: #00e676; font-size: 18px; font-weight: bold; margin: 20px auto; cursor: pointer; user-select: none; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 0.1s; }
+    .ptt-btn:active, .ptt-btn.active { background: #00e676; color: #121212; transform: scale(0.95); box-shadow: 0 0 20px #00e676; }
+    
+    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+  </style>
+</head>
+<body>
+
+  <!-- STEP 1: AUTHENTICATION LOCK UI -->
+  <div id="auth-box" class="card">
+    <h2>REAL TALK</h2>
+    <p style="color:#aaa; font-size:13px; margin-bottom:15px;">Walkie Talkie Gateway</p>
+    <input type="text" id="username" placeholder="Your Handle / Name" required />
+    <input type="text" id="room" placeholder="Channel Name (e.g. Squad1)" value="Squad1" required />
+    <input type="password" id="passcode" placeholder="Security Lock Passcode" required />
+    <button class="btn" onclick="joinWalkieTalkie()">Enter Frequency</button>
+  </div>
+
+  <!-- STEP 2: ACTIVE WALKIE TALKIE INTERFACE -->
+  <div id="app-box" class="card hidden">
+    <h2>REAL TALK</h2>
+    <p id="room-display" style="color:#888; font-size:12px;"></p>
+
+    <!-- FRIEND TRACKER LIST -->
+    <div style="margin-top:15px; font-size:12px; color:#aaa; text-align:left;">CONNECTED MEMBERS:</div>
+    <div id="member-list" class="member-list"></div>
+
+    <!-- PUSH TO TALK BUTTON -->
+    <button id="ptt-btn" class="ptt-btn" onmousedown="startTransmitting()" onmouseup="stopTransmitting()" ontouchstart="startTransmitting()" ontouchend="stopTransmitting()">
+      <span>HOLD TO</span>
+      <span>TALK</span>
+    </button>
+  </div>
+
+  <div id="audio-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let localStream = null;
+    const peers = {};
+    let myId = null;
+
+    const rtcConfig = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    };
+
+    async function initAudio() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        localStream.getAudioTracks().forEach(track => track.enabled = false);
+      } catch (err) {
+        alert("Microphone permission is required to use Real Talk!");
+      }
+    }
+
+    function joinWalkieTalkie() {
+      const username = document.getElementById('username').value.trim();
+      const room = document.getElementById('room').value.trim();
+      const passcode = document.getElementById('passcode').value.trim();
+
+      if (!username || !room || !passcode) {
+        alert("Please fill in all details.");
+        return;
+      }
+
+      initAudio().then(() => {
+        socket.emit('join-room', { room, username, passcode });
+      });
+    }
+
+    socket.on('joined-successfully', ({ members, myId: id }) => {
+      myId = id;
+      document.getElementById('auth-box').classList.add('hidden');
+      document.getElementById('app-box').classList.remove('hidden');
+      document.getElementById('room-display').innerText = `Active Channel: ${document.getElementById('room').value.toUpperCase()}`;
+      
+      updateMemberList(members);
+
+      members.forEach(member => {
+        if (member.id !== myId) {
+          createPeerConnection(member.id, true);
+        }
+      });
+    });
+
+    socket.on('error-msg', (msg) => alert(msg));
+
+    socket.on('user-joined', ({ id, username }) => {
+      addMemberToList(id, username);
+    });
+
+    socket.on('user-left', (id) => {
+      removeMemberFromList(id);
+      if (peers[id]) {
+        peers[id].close();
+        delete peers[id];
+      }
+      const audioEl = document.getElementById(`audio-${id}`);
+      if (audioEl) audioEl.remove();
+    });
+
+    socket.on('user-talk-status', ({ id, isSpeaking }) => {
+      const badge = document.getElementById(`status-${id}`);
+      if (badge) {
+        badge.innerText = isSpeaking ? "TALKING..." : "IDLE";
+        badge.className = `status-badge ${isSpeaking ? 'speaking' : ''}`;
+      }
+    });
+
+    function createPeerConnection(targetId, isInitiator) {
+      const pc = new RTCPeerConnection(rtcConfig);
+      peers[targetId] = pc;
+
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+      pc.ontrack = (event) => {
+        let audio = document.getElementById(`audio-${targetId}`);
+        if (!audio) {
+          audio = document.createElement('audio');
+          audio.id = `audio-${targetId}`;
+          audio.autoplay = true;
+          document.getElementById('audio-container').appendChild(audio);
+        }
+        audio.srcObject = event.streams[0];
+      };
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('signal', { targetId, signal: { candidate: event.candidate } });
+        }
+      };
+
+      if (isInitiator) {
+        pc.createOffer().then(offer => {
+          pc.setLocalDescription(offer);
+          socket.emit('signal', { targetId, signal: { sdp: offer } });
+        });
+      }
+
+      return pc;
+    }
+
+    socket.on('signal', async ({ senderId, signal }) => {
+      let pc = peers[senderId];
+      if (!pc) pc = createPeerConnection(senderId, false);
+
+      if (signal.sdp) {
+        await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+        if (signal.sdp.type === 'offer') {
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket.emit('signal', { targetId: senderId, signal: { sdp: answer } });
+        }
+      } else if (signal.candidate) {
+        await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+      }
+    });
+
+    function startTransmitting() {
+      if (!localStream) return;
+      document.getElementById('ptt-btn').classList.add('active');
+      localStream.getAudioTracks().forEach(track => track.enabled = true);
+      socket.emit('talk-status', true);
+    }
+
+    function stopTransmitting() {
+      if (!localStream) return;
+      document.getElementById('ptt-btn').classList.remove('active');
+      localStream.getAudioTracks().forEach(track => track.enabled = false);
+      socket.emit('talk-status', false);
+    }
+
+    function updateMemberList(members) {
+      const list = document.getElementById('member-list');
+      list.innerHTML = '';
+      members.forEach(m => addMemberToList(m.id, m.username));
+    }
+
+    function addMemberToList(id, username) {
+      const list = document.getElementById('member-list');
+      if (document.getElementById(`member-${id}`)) return;
+
+      const item = document.createElement('div');
+      item.className = 'member-item';
+      item.id = `member-${id}`;
+      item.innerHTML = `
+        <span>${username} ${id === myId ? '<b>(You)</b>' : ''}</span>
+        <span id="status-${id}" class="status-badge">IDLE</span>
+      `;
+      list.appendChild(item);
+    }
+
+    function removeMemberFromList(id) {
+      const item = document.getElementById(`member-${id}`);
+      if (item) item.remove();
+    }
+  </script>
+</body>
+</html>
