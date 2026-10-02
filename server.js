@@ -5,74 +5,103 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
+// Serve static files from the public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Store active room members
 const rooms = {};
 
 io.on('connection', (socket) => {
-  let currentRoom = null;
-  let username = null;
+  console.log(`User connected: ${socket.id}`);
 
-  socket.on('join-room', ({ room, username: name, passcode }) => {
-    username = name;
-    
-    if (!rooms[room]) {
-      rooms[room] = { passcode, members: {} };
-    } else if (rooms[room].passcode !== passcode) {
-      socket.emit('error-msg', 'AUTH FAILED: ACCESS CODE INVALID');
-      return;
+  // User joins frequency room
+  socket.on('join-room', ({ room, username }) => {
+    socket.room = room || 'ALPHA-1';
+    socket.username = username || `SOLDIER-${socket.id.slice(0, 4)}`;
+
+    socket.join(socket.room);
+
+    if (!rooms[socket.room]) {
+      rooms[socket.room] = {};
     }
 
-    currentRoom = room;
-    socket.join(room);
+    rooms[socket.room][socket.id] = {
+      id: socket.id,
+      username: socket.username
+    };
 
-    rooms[room].members[socket.id] = { id: socket.id, username, lat: null, lng: null };
+    // Send current squad list to the joined user
+    socket.emit('joined-successfully', {
+      myId: socket.id,
+      members: Object.values(rooms[socket.room])
+    });
 
-    const memberList = Object.values(rooms[room].members);
-    socket.emit('joined-successfully', { members: memberList, myId: socket.id });
-
-    socket.to(room).emit('user-joined', { id: socket.id, username });
+    // Broadcast to other users that someone joined
+    socket.to(socket.room).emit('user-joined', {
+      id: socket.id,
+      username: socket.username
+    });
   });
 
-  socket.on('location-update', ({ lat, lng }) => {
-    if (currentRoom && rooms[currentRoom] && rooms[currentRoom].members[socket.id]) {
-      rooms[currentRoom].members[socket.id].lat = lat;
-      rooms[currentRoom].members[socket.id].lng = lng;
-
-      socket.to(currentRoom).emit('friend-location', {
-        id: socket.id,
-        username,
-        lat,
-        lng
-      });
-    }
+  // Handle Push-To-Talk state changes
+  socket.on('talk-status', (data) => {
+    const room = socket.room || 'ALPHA-1';
+    socket.to(room).emit('user-talk-status', {
+      id: socket.id,
+      username: socket.username,
+      talking: typeof data === 'object' ? data.talking : data
+    });
   });
 
-  socket.on('signal', ({ targetId, signal }) => {
-    io.to(targetId).emit('signal', { senderId: socket.id, signal });
+  // Relay real-time WebRTC audio data / audio chunks
+  socket.on('audio-stream', (audioChunk) => {
+    const room = socket.room || 'ALPHA-1';
+    socket.to(room).emit('receive-audio', {
+      id: socket.id,
+      audio: audioChunk
+    });
   });
 
-  socket.on('talk-status', (isSpeaking) => {
-    if (currentRoom) {
-      socket.to(currentRoom).emit('user-talk-status', { id: socket.id, isSpeaking });
-    }
+  // Relay custom Emergency Alerts
+  socket.on('send-alert', () => {
+    const room = socket.room || 'ALPHA-1';
+    io.to(room).emit('receive-alert', {
+      id: socket.id,
+      username: socket.username
+    });
   });
 
+  // Handle disconnects
   socket.on('disconnect', () => {
-    if (currentRoom && rooms[currentRoom]) {
-      delete rooms[currentRoom].members[socket.id];
-      socket.to(currentRoom).emit('user-left', socket.id);
+    console.log(`User disconnected: ${socket.id}`);
+    const room = socket.room;
 
-      if (Object.keys(rooms[currentRoom].members).length === 0) {
-        delete rooms[currentRoom];
+    if (room && rooms[room] && rooms[room][socket.id]) {
+      const username = rooms[room][socket.id].username;
+      delete rooms[room][socket.id];
+
+      // Clean up empty rooms
+      if (Object.keys(rooms[room]).length === 0) {
+        delete rooms[room];
       }
+
+      // Notify squad members of disconnection
+      socket.to(room).emit('user-left', {
+        id: socket.id,
+        username: username
+      });
     }
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Tactical HUD server active on port ${PORT}`);
+  console.log(`Squad Radio Server running on port ${PORT}`);
 });
