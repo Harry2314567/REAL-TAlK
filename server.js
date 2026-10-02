@@ -7,83 +7,83 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Default passcode lock
-const ADMIN_PASSCODE = process.env.ADMIN_PASSCODE || "1234";
-
+// Serve static assets from public folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Store room states
+// In-memory data store for channels and active users
 const rooms = {};
 
 io.on('connection', (socket) => {
+  let currentRoom = null;
+  let username = null;
 
-  // Join room request
-  socket.on('join-room', ({ room, username, passcode }) => {
+  socket.on('join-room', ({ room, username: name, passcode }) => {
+    username = name;
+    
     if (!rooms[room]) {
-      rooms[room] = {
-        passcode: passcode,
-        members: {}
-      };
-    }
-
-    // Security check
-    if (rooms[room].passcode !== passcode) {
-      socket.emit('error-msg', 'Access Denied: Invalid Security Lock Code!');
+      // Create new room with passcode
+      rooms[room] = { passcode, members: {} };
+    } else if (rooms[room].passcode !== passcode) {
+      socket.emit('error-msg', 'Incorrect room passcode!');
       return;
     }
 
+    currentRoom = room;
     socket.join(room);
-    socket.room = room;
-    socket.username = username;
 
-    rooms[room].members[socket.id] = {
-      id: socket.id,
-      username: username,
-      isSpeaking: false
-    };
+    // Register user details
+    rooms[room].members[socket.id] = { id: socket.id, username, lat: null, lng: null };
 
-    socket.emit('joined-successfully', {
-      members: Object.values(rooms[room].members),
-      myId: socket.id
-    });
+    // Send existing members list to newly joined user
+    const memberList = Object.values(rooms[room].members);
+    socket.emit('joined-successfully', { members: memberList, myId: socket.id });
 
-    socket.to(room).emit('user-joined', {
-      id: socket.id,
-      username: username
-    });
+    // Broadcast new join to channel peers
+    socket.to(room).emit('user-joined', { id: socket.id, username });
   });
 
-  // WebRTC Signaling
-  socket.on('signal', ({ targetId, signal }) => {
-    io.to(targetId).emit('signal', {
-      senderId: socket.id,
-      signal: signal
-    });
-  });
+  // Handle location update relays
+  socket.on('location-update', ({ lat, lng }) => {
+    if (currentRoom && rooms[currentRoom] && rooms[currentRoom].members[socket.id]) {
+      rooms[currentRoom].members[socket.id].lat = lat;
+      rooms[currentRoom].members[socket.id].lng = lng;
 
-  // Push-To-Talk state updates
-  socket.on('talk-status', (isTalking) => {
-    if (socket.room && rooms[socket.room] && rooms[socket.room].members[socket.id]) {
-      rooms[socket.room].members[socket.id].isSpeaking = isTalking;
-      io.to(socket.room).emit('user-talk-status', {
+      socket.to(currentRoom).emit('friend-location', {
         id: socket.id,
-        isSpeaking: isTalking
+        username,
+        lat,
+        lng
       });
     }
   });
 
-  // Handle client disconnect
-  socket.on('disconnect', () => {
-    if (socket.room && rooms[socket.room]) {
-      delete rooms[socket.room].members[socket.id];
-      socket.to(socket.room).emit('user-left', socket.id);
+  // Relay WebRTC signaling data
+  socket.on('signal', ({ targetId, signal }) => {
+    io.to(targetId).emit('signal', { senderId: socket.id, signal });
+  });
 
-      if (Object.keys(rooms[socket.room].members).length === 0) {
-        delete rooms[socket.room];
+  // Relay talking indicator status
+  socket.on('talk-status', (isSpeaking) => {
+    if (currentRoom) {
+      socket.to(currentRoom).emit('user-talk-status', { id: socket.id, isSpeaking });
+    }
+  });
+
+  // Handle disconnection and cleanup
+  socket.on('disconnect', () => {
+    if (currentRoom && rooms[currentRoom]) {
+      delete rooms[currentRoom].members[socket.id];
+      socket.to(currentRoom).emit('user-left', socket.id);
+
+      // Clean up empty room
+      if (Object.keys(rooms[currentRoom].members).length === 0) {
+        delete rooms[currentRoom];
       }
     }
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Real Talk Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Real Talk server running on port ${PORT}`);
+});
