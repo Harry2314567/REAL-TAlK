@@ -62,7 +62,6 @@
       border-color: #ff3333;
     }
 
-    /* CUSTOM NAME BAR */
     .name-section {
       width: 100%;
       margin-top: 14px;
@@ -101,7 +100,6 @@
       color: #000;
     }
 
-    /* PTT BUTTON */
     .ptt-wrapper {
       width: 100%;
       display: flex;
@@ -135,7 +133,6 @@
       transform: scale(0.96);
     }
 
-    /* ALERT BUTTON */
     #alert-btn {
       width: 100%;
       padding: 12px;
@@ -154,7 +151,6 @@
       color: #000;
     }
 
-    /* SQUAD LIST */
     .squad-section {
       width: 100%;
       flex: 1;
@@ -215,7 +211,6 @@
       <div id="connection-status" class="status-badge">CONNECTING...</div>
     </div>
 
-    <!-- Custom Name Section -->
     <div class="name-section">
       <input type="text" id="username-input" placeholder="ENTER CALLSIGN..." maxlength="15" />
       <button id="save-name-btn" onclick="updateCallsign()">SET NAME</button>
@@ -232,6 +227,9 @@
     </div>
   </div>
 
+  <!-- Container for remote audio streams -->
+  <div id="audio-container" style="display: none;"></div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -239,7 +237,16 @@
     let localStream = null;
     let myId = null;
 
-    // Load saved callsign or generate default
+    // WebRTC Peer Connections map
+    const peerConnections = {};
+
+    const rtcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
     let callsign = localStorage.getItem('squad_callsign') || ('SOLDIER-' + Math.floor(1000 + Math.random() * 9000));
     document.getElementById('username-input').value = callsign;
 
@@ -248,8 +255,7 @@
       if (!inputVal) return;
       callsign = inputVal;
       localStorage.setItem('squad_callsign', callsign);
-      
-      // Update server with new name
+
       socket.emit('join-room', { room: 'ALPHA-1', username: callsign });
       if (myId) {
         addOrUpdateMember(myId, callsign, false);
@@ -266,7 +272,6 @@
       return audioCtx;
     }
 
-    // Voice Synthesizer
     function speak(text) {
       if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
@@ -275,7 +280,6 @@
       window.speechSynthesis.speak(utterance);
     }
 
-    // Sound: Ping for user join
     function playPing() {
       const ctx = getAudioContext();
       const osc = ctx.createOscillator();
@@ -290,7 +294,6 @@
       osc.stop(ctx.currentTime + 0.15);
     }
 
-    // Sound: "Pu-pu-pu!" Alert Sound
     function playPuPuPu() {
       const ctx = getAudioContext();
       for (let i = 0; i < 3; i++) {
@@ -307,7 +310,6 @@
       }
     }
 
-    // Sound: Glitch Noise for Network Error
     function playGlitchNoise() {
       const ctx = getAudioContext();
       const bufferSize = ctx.sampleRate * 0.15;
@@ -333,22 +335,109 @@
       whiteNoise.start();
     }
 
-    // Microphone Setup
+    // Initialize Microphone
     async function initAudio() {
+      if (localStream) return localStream;
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        localStream.getAudioTracks().forEach(t => t.enabled = false);
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        // Mute mic by default until PTT button is held
+        localStream.getAudioTracks().forEach(track => track.enabled = false);
+        return localStream;
       } catch (e) {
-        console.warn("Microphone access pending or denied.");
+        console.error("Microphone access error:", e);
+        alert("Microphone permission is required for radio comms.");
       }
     }
 
-    // Push To Talk Controls
+    // WebRTC Peer Connection Factory
+    function createPeerConnection(targetSocketId) {
+      if (peerConnections[targetSocketId]) return peerConnections[targetSocketId];
+
+      const pc = new RTCPeerConnection(rtcConfig);
+      peerConnections[targetSocketId] = pc;
+
+      // Add local audio track to connection
+      if (localStream) {
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      }
+
+      // Handle ICE candidates
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('webrtc-ice-candidate', {
+            targetId: targetSocketId,
+            candidate: event.candidate
+          });
+        }
+      };
+
+      // Play incoming audio track
+      pc.ontrack = (event) => {
+        let audioEl = document.getElementById(`audio-${targetSocketId}`);
+        if (!audioEl) {
+          audioEl = document.createElement('audio');
+          audioEl.id = `audio-${targetSocketId}`;
+          audioEl.autoplay = true;
+          audioEl.playsInline = true;
+          document.getElementById('audio-container').appendChild(audioEl);
+        }
+        audioEl.srcObject = event.streams[0];
+      };
+
+      return pc;
+    }
+
+    async function initiateWebRTCCall(targetSocketId) {
+      const pc = createPeerConnection(targetSocketId);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      socket.emit('webrtc-offer', {
+        targetId: targetSocketId,
+        offer: offer
+      });
+    }
+
+    // WebRTC Socket Listeners
+    socket.on('webrtc-offer', async ({ senderId, offer }) => {
+      await initAudio();
+      const pc = createPeerConnection(senderId);
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      socket.emit('webrtc-answer', {
+        targetId: senderId,
+        answer: answer
+      });
+    });
+
+    socket.on('webrtc-answer', async ({ senderId, answer }) => {
+      const pc = peerConnections[senderId];
+      if (pc) {
+        await pc.setRemoteDescription(new RTCSessionDescription(answer));
+      }
+    });
+
+    socket.on('webrtc-ice-candidate', async ({ senderId, candidate }) => {
+      const pc = peerConnections[senderId];
+      if (pc && candidate) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.error("Error adding ICE candidate", e);
+        }
+      }
+    });
+
+    // PTT Controls
     const pttBtn = document.getElementById('ptt-btn');
 
-    function startTransmit() {
+    async function startTransmit() {
       getAudioContext();
+      await initAudio();
       if (!localStream) return;
+
       pttBtn.classList.add('transmitting');
       pttBtn.innerText = "TRANSMITTING";
       localStream.getAudioTracks().forEach(t => t.enabled = true);
@@ -374,7 +463,7 @@
     }
 
     // Socket Event Handlers
-    socket.on('connect', () => {
+    socket.on('connect', async () => {
       myId = socket.id;
       const statusEl = document.getElementById('connection-status');
       statusEl.innerText = 'ONLINE';
@@ -382,6 +471,8 @@
 
       playPing();
       setTimeout(() => speak("Connected"), 200);
+
+      await initAudio();
       socket.emit('join-room', { room: 'ALPHA-1', username: callsign });
     });
 
@@ -392,11 +483,22 @@
 
       playGlitchNoise();
       setTimeout(() => speak("Disconnected"), 200);
+
+      // Clean up peer connections
+      Object.keys(peerConnections).forEach(id => {
+        peerConnections[id].close();
+        delete peerConnections[id];
+      });
     });
 
     socket.on('joined-successfully', ({ members }) => {
-      initAudio();
       renderSquad(members);
+      // Initiate WebRTC connections with all existing members
+      members.forEach(m => {
+        if (m.id !== myId) {
+          initiateWebRTCCall(m.id);
+        }
+      });
     });
 
     socket.on('user-joined', ({ id, username }) => {
@@ -408,8 +510,17 @@
     socket.on('user-left', ({ id }) => {
       playGlitchNoise();
       setTimeout(() => speak("Disconnected"), 200);
+
       const el = document.getElementById(`user-${id}`);
       if (el) el.remove();
+
+      const audioEl = document.getElementById(`audio-${id}`);
+      if (audioEl) audioEl.remove();
+
+      if (peerConnections[id]) {
+        peerConnections[id].close();
+        delete peerConnections[id];
+      }
     });
 
     socket.on('user-talk-status', ({ id, username, talking }) => {
