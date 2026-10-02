@@ -2,464 +2,356 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TACTICAL HUD - Google Route & Tactical Voice</title>
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Real Talk HUD</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
-    body { background: #050b08; color: #00ff66; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 5px; overflow: hidden; }
-    
-    /* Optimized ultra-compact layout for smartwatch screens */
-    .watch-card {
-      background: rgba(10, 20, 15, 0.95);
-      border: 2px solid #00ff66;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0, 255, 102, 0.25);
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif;
+    }
+
+    body, html {
       width: 100%;
-      max-width: 320px;
-      padding: 10px;
-      text-align: center;
+      height: 100%;
+      background: #000;
+      color: #0f0;
+      overflow: hidden;
     }
 
-    h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 5px #00ff66; margin-bottom: 6px; }
-    p.sub { font-size: 9px; color: #00aa44; margin-bottom: 8px; text-transform: uppercase; }
+    /* Swipeable Viewport Wrapper */
+    #app-viewport {
+      display: flex;
+      width: 200vw;
+      height: 100vh;
+      overflow-x: scroll;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
 
-    input {
+    /* Hide scrollbars */
+    #app-viewport::-webkit-scrollbar {
+      display: none;
+    }
+    #app-viewport {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Pages */
+    .page {
+      width: 100vw;
+      height: 100vh;
+      scroll-snap-align: start;
+      flex-shrink: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* PAGE 1: TRANSMIT & SQUAD */
+    #page-comms {
+      padding: 16px;
+      background: #0a0a0a;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .status-bar {
       width: 100%;
-      padding: 8px;
-      margin: 4px 0;
-      border: 1px solid #00aa44;
-      background: #021208;
-      color: #00ff66;
-      border-radius: 4px;
-      outline: none;
-      font-size: 11px;
-    }
-    input:focus { border-color: #00ff66; box-shadow: 0 0 5px #00ff66; }
-
-    .btn-hud {
-      width: 100%;
-      padding: 8px;
-      background: #00ff66;
-      color: #000;
-      border: none;
-      font-weight: bold;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-top: 6px;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .hidden { display: none !important; }
-
-    /* Tactical Map Styling */
-    #map {
-      width: 100%;
-      height: 160px;
-      border-radius: 8px;
-      border: 1px solid #00ff66;
-      margin: 6px 0;
-    }
-
-    .status-hud {
-      font-size: 9px;
-      color: #00ff66;
-      margin-bottom: 4px;
-      text-align: left;
-      background: rgba(0, 255, 102, 0.1);
-      padding: 4px;
-      border-radius: 4px;
-    }
-
-    .member-list {
-      margin: 4px 0;
-      background: #021208;
-      border: 1px solid #00aa44;
-      border-radius: 4px;
-      padding: 4px;
-      max-height: 80px;
-      overflow-y: auto;
-      text-align: left;
-    }
-    .member-item {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 4px;
-      border-bottom: 1px solid #003311;
-      font-size: 10px;
-    }
-    .member-item:last-child { border-bottom: none; }
-
-    .route-btn {
-      background: #00ff66;
-      color: #000;
-      border: none;
-      padding: 2px 6px;
-      border-radius: 2px;
-      font-size: 9px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    
-    .clear-btn {
-      background: #ff3333;
-      color: #fff;
-      border: none;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 9px;
-      font-weight: bold;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 4px;
-    }
-
-    .ptt-btn {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      background: #021208;
-      border: 3px solid #00ff66;
+      font-size: 11px;
       color: #00ff66;
-      font-size: 10px;
-      font-weight: bold;
-      margin: 6px auto;
-      cursor: pointer;
-      user-select: none;
+      margin-bottom: 12px;
+      letter-spacing: 1px;
+    }
+
+    /* PTT Transmit Button */
+    #ptt-btn {
+      width: 100%;
+      height: 90px;
+      border-radius: 12px;
+      border: 2px solid #00ff66;
+      background: rgba(0, 255, 102, 0.05);
+      color: #00ff66;
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: 2px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 0 10px rgba(0,255,102,0.2);
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+      transition: all 0.1s ease;
+      touch-action: manipulation;
     }
-    .ptt-btn:active, .ptt-btn.active {
+
+    #ptt-btn:active, #ptt-btn.active {
       background: #00ff66;
       color: #000;
-      box-shadow: 0 0 20px #00ff66;
+      box-shadow: 0 0 30px #00ff66;
+      transform: scale(0.98);
+    }
+
+    .swipe-hint {
+      font-size: 10px;
+      color: #555;
+      margin: 10px 0 6px 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Squad List */
+    .squad-title {
+      width: 100%;
+      font-size: 12px;
+      color: #888;
+      margin-top: 10px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #222;
+      padding-bottom: 4px;
+    }
+
+    #squad-list {
+      width: 100%;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .squad-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141414;
+      border-left: 3px solid #00ff66;
+      padding: 10px 12px;
+      border-radius: 6px;
+    }
+
+    .squad-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .squad-callsign {
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .squad-status {
+      font-size: 10px;
+      color: #888;
+    }
+
+    .nav-btn {
+      background: #00ff66;
+      color: #000;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-weight: 800;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    /* PAGE 2: FULLSCREEN MAP */
+    #page-map {
+      background: #000;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    #map-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid #00ff66;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #00ff66;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
 
-  <!-- AUTHENTICATION SCREEN -->
-  <div id="auth-box" class="watch-card">
-    <h2>[ TACTICAL HUD ]</h2>
-    <p class="sub">NAV SYSTEM</p>
-    <input type="text" id="username" placeholder="CALLSIGN / HANDLE" required />
-    <input type="text" id="room" placeholder="SQUAD FREQUENCY" value="ALPHA-1" required />
-    <input type="password" id="passcode" placeholder="ENCRYPTION KEY" required />
-    <button class="btn-hud" onclick="joinWalkieTalkie()">AUTHENTICATE</button>
+  <div id="app-viewport">
+    
+    <!-- PAGE 1: COMMS & TRANSMIT -->
+    <section class="page" id="page-comms">
+      <div class="status-bar">
+        <span>CH: 142.800</span>
+        <span id="gps-status">GPS: LOCKING...</span>
+      </div>
+
+      <!-- TRANSMIT BUTTON ON TOP -->
+      <button id="ptt-btn">PUSH TO TRANSMIT</button>
+
+      <div class="swipe-hint">SLIDE RIGHT FOR MAP &rarr;</div>
+
+      <div class="squad-title">SQUAD MEMBERS</div>
+      
+      <div id="squad-list">
+        <!-- Live Squad members rendered dynamically -->
+        <div class="squad-card">
+          <div class="squad-info">
+            <span class="squad-callsign">ALPHA-1 (YOU)</span>
+            <span class="squad-status">LIVE | TRANSMITTER READY</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 2: MAP PAGE -->
+    <section class="page" id="page-map">
+      <div id="map-overlay">&larr; SWIPE LEFT FOR COMMS | TACTICAL HUD</div>
+      <div id="map"></div>
+    </section>
+
   </div>
-
-  <!-- MAIN HUD DISPLAY -->
-  <div id="app-box" class="watch-card hidden">
-    <h2>[ NET ACTIVE ]</h2>
-    <div id="status-hud" class="status-hud">GRID: INITIALIZING GPS...</div>
-
-    <!-- GOOGLE MAP DISPLAY -->
-    <div id="map"></div>
-
-    <button id="clear-route" class="clear-btn hidden" onclick="clearCurrentRoute()">ABORT ROUTE NAV</button>
-
-    <!-- SQUAD MATRIX -->
-    <div id="member-list" class="member-list"></div>
-
-    <!-- PUSH TO TALK COMMS -->
-    <button id="ptt-btn" class="ptt-btn" onmousedown="startTransmitting()" onmouseup="stopTransmitting()" ontouchstart="startTransmitting()" ontouchend="stopTransmitting()">TRANSMIT</button>
-  </div>
-
-  <div id="audio-container"></div>
-
-  <script src="/socket.io/socket.io.js"></script>
 
   <script>
-    const socket = io();
-    let localStream = null;
-    const peers = {};
-    let myId = null;
-    
-    // Google Maps & Navigation State
-    let map = null;
-    let directionsService = null;
-    let directionsRenderer = null;
-    let myLatLng = null;
-    const friendLocations = {};
-    const mapMarkers = {};
+    // --- APP STATE ---
+    let map, directionsService, directionsRenderer;
+    let myMarker, myLatLng = null;
+    let isTransmitting = false;
 
-    // Military Voice Synthesizer
-    function tacticalVoiceSpeak(text) {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel(); // Stop ongoing speech
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 0.6; // Deep, commanding tone
-      utterance.rate = 1.05; // Rapid tactical delivery
-      utterance.volume = 1.0;
+    // --- PTT AUDIO HANDLERS ---
+    const pttBtn = document.getElementById('ptt-btn');
+
+    function startTransmit() {
+      if (isTransmitting) return;
+      isTransmitting = true;
+      pttBtn.classList.add('active');
+      pttBtn.innerText = "TRANSMITTING...";
+      // WebRTC audio broadcast logic here
+    }
+
+    function stopTransmit() {
+      if (!isTransmitting) return;
+      isTransmitting = false;
+      pttBtn.classList.remove('active');
+      pttBtn.innerText = "PUSH TO TRANSMIT";
+      // Stop WebRTC audio broadcast logic here
+    }
+
+    pttBtn.addEventListener('mousedown', startTransmit);
+    pttBtn.addEventListener('mouseup', stopTransmit);
+    pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startTransmit(); });
+    pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopTransmit(); });
+
+    // --- GEOLOCATION TRACKING ---
+    if ("geolocation" in navigator) {
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          myLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          document.getElementById('gps-status').innerText = "GPS: LOCKED";
+          if (map && myMarker) {
+            myMarker.setPosition(myLatLng);
+          }
+        },
+        (err) => {
+          document.getElementById('gps-status').innerText = "GPS: ERROR";
+        },
+        { enableHighAccuracy: true }
+      );
+    }
+
+    // --- MAP INITIALIZATION ---
+    function initMap() {
+      const defaultCenter = { lat: 0, lng: 0 };
       
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => v.lang.includes('en') && v.name.toLowerCase().includes('male'));
-      if (preferredVoice) utterance.voice = preferredVoice;
-
-      window.speechSynthesis.speak(utterance);
-    }
-
-    async function initAudio() {
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        localStream.getAudioTracks().forEach(track => track.enabled = false);
-      } catch (err) {
-        alert("COMMS ERROR: MICROPHONE ACCESS DENIED!");
-      }
-    }
-
-    function initGoogleMap() {
-      // Dark High-Contrast Tactical Map Styling for low-power smartwatches
-      const darkTacticalStyle = [
-        { elementType: "geometry", stylers: [{ color: "#09120c" }] },
-        { elementType: "labels.text.stroke", stylers: [{ color: "#09120c" }] },
-        { elementType: "labels.text.fill", stylers: [{ color: "#00ff66" }] },
-        { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#00ff66" }] },
-        { featureType: "road", elementType: "geometry", stylers: [{ color: "#16331e" }] },
-        { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#00ff66" }] },
-        { featureType: "water", elementType: "geometry", stylers: [{ color: "#020a05" }] }
-      ];
-
-      // Centered at Alair region
-      const defaultPos = { lat: 17.63, lng: 78.96 };
-
+      // Initialize Map with dark custom tactical theme
       map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 13,
-        center: defaultPos,
-        styles: darkTacticalStyle,
-        disableDefaultUI: true // Removes standard controls to fit small watch displays
+        zoom: 15,
+        center: defaultCenter,
+        disableDefaultUI: true,
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#212121" }] },
+          { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
+          { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
+          { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+          { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2c2c2c" }] },
+          { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
+          { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] }
+        ]
       });
 
+      // Initialize Routing Services
       directionsService = new google.maps.DirectionsService();
       directionsRenderer = new google.maps.DirectionsRenderer({
         map: map,
         suppressMarkers: false,
-        polylineOptions: {
-          strokeColor: "#00ff66",
-          strokeWeight: 4,
-          strokeOpacity: 0.9
+        polylineOptions: { strokeColor: "#00ff66", strokeWeight: 5 }
+      });
+
+      // Local user position marker
+      myMarker = new google.maps.Marker({
+        position: defaultCenter,
+        map: map,
+        title: "Your Location",
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 7,
+          fillColor: "#00ff66",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2
         }
       });
-
-      // Track Live GPS Position
-      if ("geolocation" in navigator) {
-        navigator.geolocation.watchPosition((position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          myLatLng = { lat, lng };
-
-          document.getElementById('status-hud').innerText = `GRID: ${lat.toFixed(4)}N, ${lng.toFixed(4)}E`;
-
-          socket.emit('location-update', { lat, lng });
-          updateMarker(myId, document.getElementById('username').value + " (YOU)", lat, lng, true);
-        }, (err) => console.log("GPS Error:", err), { enableHighAccuracy: true });
-      }
     }
 
-    function joinWalkieTalkie() {
-      const username = document.getElementById('username').value.trim();
-      const room = document.getElementById('room').value.trim();
-      const passcode = document.getElementById('passcode').value.trim();
-
-      if (!username || !room || !passcode) return alert("ENTER COMPLETE CREDENTIALS");
-
-      initAudio().then(() => {
-        socket.emit('join-room', { room, username, passcode });
-      });
-    }
-
-    socket.on('joined-successfully', ({ members, myId: id }) => {
-      myId = id;
-      document.getElementById('auth-box').classList.add('hidden');
-      document.getElementById('app-box').classList.remove('hidden');
-      
-      initGoogleMap();
-      updateMemberList(members);
-
-      tacticalVoiceSpeak("Comms linked. Tactical navigation online.");
-
-      members.forEach(member => {
-        if (member.id !== myId) createPeerConnection(member.id, true);
-      });
-    });
-
-    socket.on('error-msg', (msg) => alert(msg));
-    socket.on('user-joined', ({ id, username }) => {
-      addMemberToList(id, username);
-      tacticalVoiceSpeak(`Friendly force ${username} entered network.`);
-    });
-
-    socket.on('user-left', (id) => {
-      removeMemberFromList(id);
-      delete friendLocations[id];
-      if (mapMarkers[id]) {
-        mapMarkers[id].setMap(null);
-        delete mapMarkers[id];
-      }
-      if (peers[id]) { peers[id].close(); delete peers[id]; }
-    });
-
-    socket.on('friend-location', ({ id, username, lat, lng }) => {
-      friendLocations[id] = { lat, lng, username };
-      updateMarker(id, username, lat, lng, false);
-    });
-
-    function updateMarker(id, username, lat, lng, isSelf) {
-      if (!map) return;
-      const pos = { lat, lng };
-
-      if (mapMarkers[id]) {
-        mapMarkers[id].setPosition(pos);
-      } else {
-        mapMarkers[id] = new google.maps.Marker({
-          position: pos,
-          map: map,
-          title: username,
-          icon: isSelf ? "http://maps.google.com/mapfiles/ms/icons/green-dot.png" : "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
-        });
-        if (isSelf) map.setCenter(pos);
-      }
-    }
-
-    // --- GOOGLE DIRECTIONS ROUTE SYSTEM ---
-    function drawRouteTo(targetId) {
+    // --- NAVIGATION ROUTING ---
+    function navigateToTarget(targetLat, targetLng) {
       if (!myLatLng) {
-        tacticalVoiceSpeak("Warning. Current GPS coordinates unverified.");
+        alert("GPS location not yet available.");
         return;
       }
-      const target = friendLocations[targetId];
-      if (!target) return;
 
-      const request = {
-        origin: myLatLng,
-        destination: { lat: target.lat, lng: target.lng },
-        travelMode: google.maps.TravelMode.DRIVING
-      };
-
-      directionsService.route(request, (result, status) => {
-        if (status === google.maps.DirectionsStatus.OK) {
-          directionsRenderer.setDirections(result);
-          document.getElementById('clear-btn')?.classList.remove('hidden');
-
-          const route = result.routes[0].legs[0];
-          const dist = route.distance.text;
-          const duration = route.duration.text;
-
-          // Soldier Navigation Voice Announcement
-          tacticalVoiceSpeak(`Plotting route to target soldier ${target.username}. Distance: ${dist}. Estimated time of arrival: ${duration}. Move out.`);
-        } else {
-          tacticalVoiceSpeak("Route generation failed. Check terrain or connectivity.");
-        }
+      // Scroll automatically to Map Page
+      document.getElementById('app-viewport').scrollTo({
+        left: window.innerWidth,
+        behavior: 'smooth'
       });
-    }
 
-    function clearCurrentRoute() {
-      directionsRenderer.setDirections({ routes: [] });
-      document.getElementById('clear-btn')?.classList.add('hidden');
-      tacticalVoiceSpeak("Navigation route cleared. Standing by.");
-    }
-
-    socket.on('user-talk-status', ({ id, isSpeaking }) => {
-      const badge = document.getElementById(`status-${id}`);
-      if (badge) {
-        badge.innerText = isSpeaking ? "TRANSMITTING" : "IDLE";
-        badge.style.color = isSpeaking ? "#00ff66" : "#888";
-      }
-    });
-
-    function createPeerConnection(targetId, isInitiator) {
-      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-      peers[targetId] = pc;
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-      pc.ontrack = (e) => {
-        let audio = document.getElementById(`audio-${targetId}`);
-        if (!audio) {
-          audio = document.createElement('audio');
-          audio.id = `audio-${targetId}`;
-          audio.autoplay = true;
-          document.getElementById('audio-container').appendChild(audio);
+      // Request directions via Google Directions API
+      directionsService.route(
+        {
+          origin: myLatLng,
+          destination: { lat: targetLat, lng: targetLng },
+          travelMode: google.maps.TravelMode.DRIVING
+        },
+        (response, status) => {
+          if (status === "OK") {
+            directionsRenderer.setDirections(response);
+          } else {
+            alert("Route calculation failed: " + status);
+          }
         }
-        audio.srcObject = e.streams[0];
-      };
-
-      pc.onicecandidate = (e) => {
-        if (e.candidate) socket.emit('signal', { targetId, signal: { candidate: e.candidate } });
-      };
-
-      if (isInitiator) {
-        pc.createOffer().then(offer => {
-          pc.setLocalDescription(offer);
-          socket.emit('signal', { targetId: targetId, signal: { sdp: offer } });
-        });
-      }
-      return pc;
-    }
-
-    socket.on('signal', async ({ senderId, signal }) => {
-      let pc = peers[senderId] || createPeerConnection(senderId, false);
-      if (signal.sdp) {
-        await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-        if (signal.sdp.type === 'offer') {
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          socket.emit('signal', { targetId: senderId, signal: { sdp: answer } });
-        }
-      } else if (signal.candidate) {
-        await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-      }
-    });
-
-    function startTransmitting() {
-      if (!localStream) return;
-      document.getElementById('ptt-btn').classList.add('active');
-      localStream.getAudioTracks().forEach(t => t.enabled = true);
-      socket.emit('talk-status', true);
-    }
-
-    function stopTransmitting() {
-      if (!localStream) return;
-      document.getElementById('ptt-btn').classList.remove('active');
-      localStream.getAudioTracks().forEach(t => t.enabled = false);
-      socket.emit('talk-status', false);
-    }
-
-    function updateMemberList(members) {
-      const list = document.getElementById('member-list');
-      list.innerHTML = '';
-      members.forEach(m => addMemberToList(m.id, m.username));
-    }
-
-    function addMemberToList(id, username) {
-      const list = document.getElementById('member-list');
-      if (document.getElementById(`member-${id}`)) return;
-      const item = document.createElement('div');
-      item.className = 'member-item';
-      item.id = `member-${id}`;
-
-      const routeBtn = (id !== myId) ? `<button class="route-btn" onclick="drawRouteTo('${id}')">NAV</button>` : '';
-
-      item.innerHTML = `
-        <div>
-          <span>${username} ${id === myId ? '(YOU)' : ''}</span>
-          ${routeBtn}
-        </div>
-        <span id="status-${id}">IDLE</span>
-      `;
-      list.appendChild(item);
-    }
-
-    function removeMemberFromList(id) {
-      const item = document.getElementById(`member-${id}`);
-      if (item) item.remove();
+      );
     }
   </script>
 
-  <!-- GOOGLE MAPS API WITH DIRECTIONS SERVICE -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDtQzAOxGO5wkQuk8YI-QezE7Z-KJbGkFo&libraries=geometry,places"></script>
+  <!-- GOOGLE MAPS API SCRIPT -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=geometry,places&callback=initMap" async defer></script>
 </body>
 </html>
