@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>REAL_TALK</title>
+  <title>Squad Radio Comms</title>
   <style>
     * {
       box-sizing: border-box;
@@ -20,6 +20,16 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      transition: background-color 0.1s ease;
+    }
+
+    body.alert-active {
+      animation: alertFlash 0.3s infinite alternate;
+    }
+
+    @keyframes alertFlash {
+      0% { background-color: #0d0d0d; }
+      100% { background-color: #660000; }
     }
 
     #app-container {
@@ -34,6 +44,11 @@
       align-items: center;
       background: #141414;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      transition: background 0.1s ease;
+    }
+
+    body.alert-active #app-container {
+      background: rgba(30, 0, 0, 0.9);
     }
 
     .header {
@@ -136,19 +151,21 @@
     #alert-btn {
       width: 100%;
       padding: 12px;
-      background: rgba(255, 51, 51, 0.1);
-      border: 1px solid #ff3333;
+      background: rgba(255, 51, 51, 0.2);
+      border: 2px solid #ff3333;
       color: #ff3333;
       font-weight: bold;
-      letter-spacing: 1px;
+      letter-spacing: 2px;
       border-radius: 6px;
       cursor: pointer;
       margin-top: 10px;
+      box-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
     }
 
     #alert-btn:active {
       background: #ff3333;
       color: #000;
+      box-shadow: 0 0 20px #ff3333;
     }
 
     .squad-section {
@@ -207,27 +224,26 @@
 
   <div id="app-container">
     <div class="header">
-      <h3 style="letter-spacing: 1px;">REAL_TALK</h3>
+      <h3 style="letter-spacing: 1px;">SQUAD RADIO</h3>
       <div id="connection-status" class="status-badge">CONNECTING...</div>
     </div>
 
     <div class="name-section">
       <input type="text" id="username-input" placeholder="ENTER CALLSIGN..." maxlength="15" />
-      <button id="save-name-btn" onclick="updateCallsign()">SET_NAME</button>
+      <button id="save-name-btn" onclick="updateCallsign()">SET NAME</button>
     </div>
 
     <div class="ptt-wrapper">
       <button id="ptt-btn">HOLD TO TALK</button>
-      <button id="alert-btn" onclick="triggerAlert()">SEND_ALERT</button>
+      <button id="alert-btn" onclick="triggerAlert()">🚨 EMERGENCY ALERT 🚨</button>
     </div>
 
     <div class="squad-section">
-      <div class="squad-title">ACTIVE-FREQUENCY</div>
+      <div class="squad-title">ACTIVE FREQUENCY</div>
       <div id="squad-list"></div>
     </div>
   </div>
 
-  <!-- Container for remote audio streams -->
   <div id="audio-container" style="display: none;"></div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -237,7 +253,6 @@
     let localStream = null;
     let myId = null;
 
-    // WebRTC Peer Connections map
     const peerConnections = {};
 
     const rtcConfig = {
@@ -294,20 +309,48 @@
       osc.stop(ctx.currentTime + 0.15);
     }
 
-    function playPuPuPu() {
+    // High-Intensity Emergency Siren Audio
+    function playEmergencySiren() {
       const ctx = getAudioContext();
-      for (let i = 0; i < 3; i++) {
+      const cycles = 4;
+      const cycleDuration = 0.25;
+
+      for (let i = 0; i < cycles; i++) {
+        const startTime = ctx.currentTime + (i * cycleDuration);
+        
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(600, ctx.currentTime + (i * 0.08));
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + (i * 0.08));
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (i * 0.08) + 0.05);
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(900, startTime);
+        osc.frequency.exponentialRampToValueAtTime(1800, startTime + (cycleDuration / 2));
+        osc.frequency.exponentialRampToValueAtTime(900, startTime + cycleDuration);
+
+        gain.gain.setValueAtTime(0.6, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + cycleDuration);
+
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + (i * 0.08));
-        osc.stop(ctx.currentTime + (i * 0.08) + 0.05);
+
+        osc.start(startTime);
+        osc.stop(startTime + cycleDuration);
       }
+    }
+
+    // Triggers Screen Flashing + Siren + TTS Alert
+    function playAlertSequence(senderUsername) {
+      playEmergencySiren();
+
+      // Visual flashing
+      document.body.classList.add('alert-active');
+      setTimeout(() => {
+        document.body.classList.remove('alert-active');
+      }, 1200);
+
+      // Voice warning announcement
+      setTimeout(() => {
+        speak(`Alert from ${senderUsername || 'unknown user'}`);
+      }, 1000);
     }
 
     function playGlitchNoise() {
@@ -335,33 +378,27 @@
       whiteNoise.start();
     }
 
-    // Initialize Microphone
     async function initAudio() {
       if (localStream) return localStream;
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        // Mute mic by default until PTT button is held
         localStream.getAudioTracks().forEach(track => track.enabled = false);
         return localStream;
       } catch (e) {
         console.error("Microphone access error:", e);
-        alert("Microphone permission is required for radio comms.");
       }
     }
 
-    // WebRTC Peer Connection Factory
     function createPeerConnection(targetSocketId) {
       if (peerConnections[targetSocketId]) return peerConnections[targetSocketId];
 
       const pc = new RTCPeerConnection(rtcConfig);
       peerConnections[targetSocketId] = pc;
 
-      // Add local audio track to connection
       if (localStream) {
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
       }
 
-      // Handle ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit('webrtc-ice-candidate', {
@@ -371,7 +408,6 @@
         }
       };
 
-      // Play incoming audio track
       pc.ontrack = (event) => {
         let audioEl = document.getElementById(`audio-${targetSocketId}`);
         if (!audioEl) {
@@ -398,7 +434,6 @@
       });
     }
 
-    // WebRTC Socket Listeners
     socket.on('webrtc-offer', async ({ senderId, offer }) => {
       await initAudio();
       const pc = createPeerConnection(senderId);
@@ -462,6 +497,42 @@
       socket.emit('send-alert', { username: callsign });
     }
 
+    /* HEADPHONE MEDIA BUTTON GESTURE CONTROLS */
+    let tapCount = 0;
+    let tapTimer = null;
+    let isHolding = false;
+
+    if ('mediaSession' in navigator) {
+      const handleMediaButton = (e) => {
+        tapCount++;
+        clearTimeout(tapTimer);
+
+        if (!isHolding) {
+          isHolding = true;
+
+          // Single Tap + Hold -> PTT Transmit
+          if (tapCount === 1) {
+            startTransmit();
+          } 
+          // Double Tap + Hold -> Send Alert
+          else if (tapCount >= 2) {
+            triggerAlert();
+          }
+        }
+
+        tapTimer = setTimeout(() => {
+          if (isHolding) {
+            stopTransmit();
+            isHolding = false;
+          }
+          tapCount = 0;
+        }, 300);
+      };
+
+      navigator.mediaSession.setActionHandler('play', handleMediaButton);
+      navigator.mediaSession.setActionHandler('pause', handleMediaButton);
+    }
+
     // Socket Event Handlers
     socket.on('connect', async () => {
       myId = socket.id;
@@ -470,7 +541,7 @@
       statusEl.classList.remove('offline');
 
       playPing();
-      setTimeout(() => speak("Connected"), 200);
+      setTimeout(() => speak("Online"), 200);
 
       await initAudio();
       socket.emit('join-room', { room: 'ALPHA-1', username: callsign });
@@ -484,7 +555,6 @@
       playGlitchNoise();
       setTimeout(() => speak("Disconnected"), 200);
 
-      // Clean up peer connections
       Object.keys(peerConnections).forEach(id => {
         peerConnections[id].close();
         delete peerConnections[id];
@@ -493,7 +563,6 @@
 
     socket.on('joined-successfully', ({ members }) => {
       renderSquad(members);
-      // Initiate WebRTC connections with all existing members
       members.forEach(m => {
         if (m.id !== myId) {
           initiateWebRTCCall(m.id);
@@ -527,8 +596,8 @@
       addOrUpdateMember(id, username, talking);
     });
 
-    socket.on('receive-alert', () => {
-      playPuPuPu();
+    socket.on('receive-alert', ({ username }) => {
+      playAlertSequence(username);
     });
 
     function renderSquad(members) {
