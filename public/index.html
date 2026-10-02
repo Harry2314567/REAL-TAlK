@@ -20,16 +20,6 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      transition: background-color 0.1s ease;
-    }
-
-    body.alert-active {
-      animation: alertFlash 0.3s infinite alternate;
-    }
-
-    @keyframes alertFlash {
-      0% { background-color: #0d0d0d; }
-      100% { background-color: #660000; }
     }
 
     #app-container {
@@ -44,11 +34,6 @@
       align-items: center;
       background: #141414;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
-      transition: background 0.1s ease;
-    }
-
-    body.alert-active #app-container {
-      background: rgba(30, 0, 0, 0.9);
     }
 
     .header {
@@ -151,21 +136,19 @@
     #alert-btn {
       width: 100%;
       padding: 12px;
-      background: rgba(255, 51, 51, 0.2);
-      border: 2px solid #ff3333;
-      color: #ff3333;
+      background: rgba(255, 170, 0, 0.15);
+      border: 1px solid #ffaa00;
+      color: #ffaa00;
       font-weight: bold;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
       border-radius: 6px;
       cursor: pointer;
       margin-top: 10px;
-      box-shadow: 0 0 10px rgba(255, 51, 51, 0.3);
     }
 
     #alert-btn:active {
-      background: #ff3333;
+      background: #ffaa00;
       color: #000;
-      box-shadow: 0 0 20px #ff3333;
     }
 
     .squad-section {
@@ -235,7 +218,7 @@
 
     <div class="ptt-wrapper">
       <button id="ptt-btn">HOLD TO TALK</button>
-      <button id="alert-btn" onclick="triggerAlert()">🚨 EMERGENCY ALERT 🚨</button>
+      <button id="alert-btn" onclick="triggerAlert()">⚠️ SEND ALERT</button>
     </div>
 
     <div class="squad-section">
@@ -262,7 +245,8 @@
       ]
     };
 
-    let callsign = localStorage.getItem('squad_callsign') || ('SOLDIER-' + Math.floor(1000 + Math.random() * 9000));
+    // Random assigned unit number (e.g., UNIT-4829)
+    let callsign = localStorage.getItem('squad_callsign') || ('UNIT-' + Math.floor(1000 + Math.random() * 9000));
     document.getElementById('username-input').value = callsign;
 
     function updateCallsign() {
@@ -291,7 +275,7 @@
       if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.1;
+      utterance.rate = 1.0;
       window.speechSynthesis.speak(utterance);
     }
 
@@ -309,48 +293,44 @@
       osc.stop(ctx.currentTime + 0.15);
     }
 
-    // High-Intensity Emergency Siren Audio
-    function playEmergencySiren() {
+    // Attention-drawing Chime tone
+    function playAttentionChime() {
       const ctx = getAudioContext();
-      const cycles = 4;
-      const cycleDuration = 0.25;
+      
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-      for (let i = 0; i < cycles; i++) {
-        const startTime = ctx.currentTime + (i * cycleDuration);
-        
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+      osc1.type = 'sine';
+      osc2.type = 'sine';
 
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(900, startTime);
-        osc.frequency.exponentialRampToValueAtTime(1800, startTime + (cycleDuration / 2));
-        osc.frequency.exponentialRampToValueAtTime(900, startTime + cycleDuration);
+      osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      osc2.frequency.setValueAtTime(1760, ctx.currentTime); // A6
 
-        gain.gain.setValueAtTime(0.6, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, startTime + cycleDuration);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
 
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
 
-        osc.start(startTime);
-        osc.stop(startTime + cycleDuration);
-      }
+      osc1.start(ctx.currentTime);
+      osc2.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.4);
+      osc2.stop(ctx.currentTime + 0.4);
     }
 
-    // Triggers Screen Flashing + Siren + TTS Alert
-    function playAlertSequence(senderUsername) {
-      playEmergencySiren();
+    // Convert callsign digits into individually spoken numbers (e.g. "4, 8, 2, 9")
+    function speakAlertWithNumbers(senderCallsign) {
+      playAttentionChime();
 
-      // Visual flashing
-      document.body.classList.add('alert-active');
-      setTimeout(() => {
-        document.body.classList.remove('alert-active');
-      }, 1200);
+      // Extract numbers from sender username
+      const digits = (senderCallsign || '').replace(/\D/g, '');
+      const spokenNumbers = digits ? digits.split('').join(', ') : 'unknown';
 
-      // Voice warning announcement
       setTimeout(() => {
-        speak(`Alert from ${senderUsername || 'unknown user'}`);
-      }, 1000);
+        speak(`Alert from ${spokenNumbers}`);
+      }, 350);
     }
 
     function playGlitchNoise() {
@@ -510,12 +490,9 @@
         if (!isHolding) {
           isHolding = true;
 
-          // Single Tap + Hold -> PTT Transmit
           if (tapCount === 1) {
             startTransmit();
-          } 
-          // Double Tap + Hold -> Send Alert
-          else if (tapCount >= 2) {
+          } else if (tapCount >= 2) {
             triggerAlert();
           }
         }
@@ -597,7 +574,7 @@
     });
 
     socket.on('receive-alert', ({ username }) => {
-      playAlertSequence(username);
+      speakAlertWithNumbers(username);
     });
 
     function renderSquad(members) {
@@ -619,7 +596,7 @@
       card.className = `squad-card ${talking ? 'talking' : ''}`;
       card.innerHTML = `
         <div>
-          <div class="callsign">${username || 'SOLDIER'} ${id === myId ? '(YOU)' : ''}</div>
+          <div class="callsign">${username || 'UNIT'} ${id === myId ? '(YOU)' : ''}</div>
           <div class="member-status">${talking ? 'TRANSMITTING...' : 'STANDBY'}</div>
         </div>
       `;
