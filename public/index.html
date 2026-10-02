@@ -62,23 +62,62 @@
       border-color: #ff3333;
     }
 
+    /* CUSTOM NAME BAR */
+    .name-section {
+      width: 100%;
+      margin-top: 14px;
+      display: flex;
+      gap: 8px;
+    }
+
+    #username-input {
+      flex: 1;
+      background: #0d0d0d;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    #username-input:focus {
+      border-color: #00ff66;
+    }
+
+    #save-name-btn {
+      background: rgba(0, 255, 102, 0.15);
+      border: 1px solid #00ff66;
+      color: #00ff66;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    #save-name-btn:active {
+      background: #00ff66;
+      color: #000;
+    }
+
     /* PTT BUTTON */
     .ptt-wrapper {
       width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin: 20px 0;
+      margin: 15px 0;
     }
 
     #ptt-btn {
-      width: 200px;
-      height: 200px;
+      width: 190px;
+      height: 190px;
       border-radius: 50%;
       border: 4px solid #00ff66;
       background: radial-gradient(circle, rgba(0,255,102,0.15) 0%, rgba(0,0,0,0.8) 100%);
       color: #00ff66;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 900;
       letter-spacing: 2px;
       cursor: pointer;
@@ -96,7 +135,7 @@
       transform: scale(0.96);
     }
 
-    /* ALERT / EMERGENCY BUTTON */
+    /* ALERT BUTTON */
     #alert-btn {
       width: 100%;
       padding: 12px;
@@ -122,7 +161,7 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      margin-top: 15px;
+      margin-top: 10px;
     }
 
     .squad-title {
@@ -176,6 +215,12 @@
       <div id="connection-status" class="status-badge">CONNECTING...</div>
     </div>
 
+    <!-- Custom Name Section -->
+    <div class="name-section">
+      <input type="text" id="username-input" placeholder="ENTER CALLSIGN..." maxlength="15" />
+      <button id="save-name-btn" onclick="updateCallsign()">SET NAME</button>
+    </div>
+
     <div class="ptt-wrapper">
       <button id="ptt-btn">HOLD TO TALK</button>
       <button id="alert-btn" onclick="triggerAlert()">⚠️ SEND ALERT</button>
@@ -193,9 +238,24 @@
     let audioCtx = null;
     let localStream = null;
     let myId = null;
-    const callsign = 'SOLDIER-' + Math.floor(1000 + Math.random() * 9000);
 
-    // Audio Context Setup
+    // Load saved callsign or generate default
+    let callsign = localStorage.getItem('squad_callsign') || ('SOLDIER-' + Math.floor(1000 + Math.random() * 9000));
+    document.getElementById('username-input').value = callsign;
+
+    function updateCallsign() {
+      const inputVal = document.getElementById('username-input').value.trim();
+      if (!inputVal) return;
+      callsign = inputVal;
+      localStorage.setItem('squad_callsign', callsign);
+      
+      // Update server with new name
+      socket.emit('join-room', { room: 'ALPHA-1', username: callsign });
+      if (myId) {
+        addOrUpdateMember(myId, callsign, false);
+      }
+    }
+
     function getAudioContext() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -206,53 +266,51 @@
       return audioCtx;
     }
 
-    // Voice & Sound Synthesizer
-    function speak(text, pitchModifier = 1) {
+    // Voice Synthesizer
+    function speak(text) {
       if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.rate = 1.1;
-      utterance.pitch = pitchModifier;
       window.speechSynthesis.speak(utterance);
     }
 
-    // Sound 1: User Joined Ping (Clean High Double-Tone)
-    function playJoinPing() {
+    // Sound: Ping for user join
+    function playPing() {
       const ctx = getAudioContext();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.setValueAtTime(1760, ctx.currentTime + 0.08);
+      osc.frequency.setValueAtTime(1200, ctx.currentTime);
       gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      osc.stop(ctx.currentTime + 0.25);
+      osc.stop(ctx.currentTime + 0.15);
     }
 
-    // Sound 2: Alert Ping (Urgent Staccato Alarm)
-    function playAlertPing() {
+    // Sound: "Pu-pu-pu!" Alert Sound
+    function playPuPuPu() {
       const ctx = getAudioContext();
       for (let i = 0; i < 3; i++) {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(1200, ctx.currentTime + (i * 0.12));
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + (i * 0.12));
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (i * 0.12) + 0.08);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, ctx.currentTime + (i * 0.08));
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + (i * 0.08));
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (i * 0.08) + 0.05);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(ctx.currentTime + (i * 0.12));
-        osc.stop(ctx.currentTime + (i * 0.12) + 0.08);
+        osc.start(ctx.currentTime + (i * 0.08));
+        osc.stop(ctx.currentTime + (i * 0.08) + 0.05);
       }
     }
 
-    // Sound 3: Glitch Noise for Network Errors
+    // Sound: Glitch Noise for Network Error
     function playGlitchNoise() {
       const ctx = getAudioContext();
-      const bufferSize = ctx.sampleRate * 0.2; // 200ms
+      const bufferSize = ctx.sampleRate * 0.15;
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const output = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -266,8 +324,8 @@
       filter.frequency.value = 1000;
 
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.4, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
 
       whiteNoise.connect(filter);
       filter.connect(gain);
@@ -322,7 +380,8 @@
       statusEl.innerText = 'ONLINE';
       statusEl.classList.remove('offline');
 
-      speak("Connected");
+      playPing();
+      setTimeout(() => speak("Connected"), 200);
       socket.emit('join-room', { room: 'ALPHA-1', username: callsign });
     });
 
@@ -332,7 +391,7 @@
       statusEl.classList.add('offline');
 
       playGlitchNoise();
-      setTimeout(() => speak("Network error", 0.7), 250);
+      setTimeout(() => speak("Disconnected"), 200);
     });
 
     socket.on('joined-successfully', ({ members }) => {
@@ -341,13 +400,14 @@
     });
 
     socket.on('user-joined', ({ id, username }) => {
-      playJoinPing();
-      setTimeout(() => speak(`${username} is live`), 300);
+      playPing();
+      setTimeout(() => speak("Connected"), 200);
       addOrUpdateMember(id, username, false);
     });
 
-    socket.on('user-left', ({ id, username }) => {
-      speak("Disconnected");
+    socket.on('user-left', ({ id }) => {
+      playGlitchNoise();
+      setTimeout(() => speak("Disconnected"), 200);
       const el = document.getElementById(`user-${id}`);
       if (el) el.remove();
     });
@@ -356,9 +416,8 @@
       addOrUpdateMember(id, username, talking);
     });
 
-    socket.on('receive-alert', ({ username }) => {
-      playAlertPing();
-      setTimeout(() => speak(`${username} sent alert`, 1.2), 400);
+    socket.on('receive-alert', () => {
+      playPuPuPu();
     });
 
     function renderSquad(members) {
