@@ -1,304 +1,211 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Real Talk HUD</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live GPS Tracker</title>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     body, html {
       width: 100%;
       height: 100%;
-      background: #000;
-      color: #00ff66;
       overflow: hidden;
-      touch-action: pan-x pan-y;
+      background-color: #121212;
+      color: #ffffff;
     }
 
     #app-viewport {
       display: flex;
       width: 200vw;
       height: 100vh;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
+      overflow-x: hidden;
       scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
     }
 
-    #app-viewport::-webkit-scrollbar { display: none; }
-    #app-viewport { -ms-overflow-style: none; scrollbar-width: none; }
-
-    .page {
+    .screen {
       width: 100vw;
       height: 100vh;
-      scroll-snap-align: start;
       flex-shrink: 0;
       position: relative;
+    }
+
+    #dashboard {
+      padding: 20px;
       display: flex;
       flex-direction: column;
+      gap: 15px;
+      background: #1e1e1e;
     }
 
-    /* COMMS PAGE */
-    #page-comms {
-      padding: 16px;
-      background: #0a0a0a;
-      justify-content: flex-start;
-      align-items: center;
-      overflow-y: auto;
-    }
-
-    .status-bar {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
+    h2 {
       color: #00ff66;
-      margin-bottom: 12px;
-      letter-spacing: 1px;
-      font-weight: bold;
     }
 
-    #ptt-btn {
-      width: 100%;
-      height: 90px;
-      border-radius: 12px;
-      border: 2px solid #00ff66;
-      background: rgba(0, 255, 102, 0.08);
-      color: #00ff66;
-      font-weight: 800;
-      font-size: 18px;
-      letter-spacing: 2px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
-      touch-action: manipulation;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    #ptt-btn:active, #ptt-btn.active {
-      background: #00ff66;
-      color: #000;
-      box-shadow: 0 0 30px #00ff66;
-    }
-
-    .swipe-hint {
-      font-size: 10px;
-      color: #888;
-      margin: 12px 0 6px 0;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .squad-title {
-      width: 100%;
-      font-size: 12px;
-      color: #aaa;
-      margin-top: 10px;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      border-bottom: 1px solid #222;
-      padding-bottom: 4px;
-    }
-
-    #squad-list {
-      width: 100%;
-      flex: 1;
-      overflow-y: auto;
+    .user-list {
+      list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
 
-    .squad-card {
+    .user-card {
+      background: #2a2a2a;
+      padding: 15px;
+      border-radius: 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #141414;
-      border-left: 4px solid #00ff66;
-      padding: 10px 12px;
-      border-radius: 6px;
     }
-
-    .squad-callsign { color: #fff; font-weight: 700; font-size: 13px; }
-    .squad-status { font-size: 10px; color: #888; }
 
     .nav-btn {
       background: #00ff66;
       color: #000;
       border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-weight: 800;
-      font-size: 11px;
+      padding: 8px 16px;
+      border-radius: 5px;
+      font-weight: bold;
       cursor: pointer;
     }
 
-    /* MAP PAGE */
-    #page-map { background: #000; }
-    #map { width: 100%; height: 100%; }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
 
-    #map-overlay {
+    .back-btn {
       position: absolute;
-      top: 12px;
-      left: 12px;
-      background: rgba(0, 0, 0, 0.85);
-      border: 1px solid #00ff66;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 11px;
-      color: #00ff66;
-      pointer-events: none;
+      top: 20px;
+      left: 20px;
       z-index: 10;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      border: 1px solid #00ff66;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
   <div id="app-viewport">
-    <!-- PAGE 1: COMMS -->
-    <section class="page" id="page-comms">
-      <div class="status-bar">
-        <span id="room-tag">NET: ONLINE</span>
-        <span id="gps-status">GPS: ACQUIRING...</span>
-      </div>
+    <!-- Screen 1: User List / Dashboard -->
+    <div class="screen" id="dashboard">
+      <h2>Active Tracker</h2>
+      <p>Select a user to navigate:</p>
+      <ul class="user-list" id="user-list"></ul>
+    </div>
 
-      <button id="ptt-btn">PUSH TO TRANSMIT</button>
-      <div class="swipe-hint">SWIPE LEFT FOR MAP &rarr;</div>
-      <div class="squad-title">SQUAD MATRIX</div>
-      <div id="squad-list"></div>
-    </section>
-
-    <!-- PAGE 2: MAP -->
-    <section class="page" id="page-map">
-      <div id="map-overlay">&larr; SWIPE RIGHT FOR COMMS</div>
+    <!-- Screen 2: Map View -->
+    <div class="screen">
+      <button class="back-btn" onclick="showDashboard()">← Dashboard</button>
       <div id="map"></div>
-    </section>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-
   <script>
     const socket = io();
-    let localStream = null;
-    let myId = null;
-    let myLatLng = { lat: 17.63, lng: 78.96 }; // Fallback start location
-
     let map;
-    let currentPolyline = null;
-    const mapMarkers = {};
+    let myId = null;
+    let myLatLng = { lat: 0, lng: 0 };
     const friendLocations = {};
+    const mapMarkers = {};
+    let currentPolyline = null;
 
-    // Initialize Mic
-    async function initAudio() {
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        localStream.getAudioTracks().forEach(t => t.enabled = false);
-      } catch (e) {
-        console.warn("Microphone access pending or denied.");
-      }
+    // Get current GPS location
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        (position) => {
+          myLatLng = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+
+          socket.emit('send-location', myLatLng);
+
+          if (map && mapMarkers[myId]) {
+            mapMarkers[myId].position = myLatLng;
+          }
+        },
+        (err) => console.error(err),
+        { enableHighAccuracy: true }
+      );
     }
-    initAudio();
 
-    // Socket Connection
-    socket.emit('join-room', { room: 'ALPHA-1', username: 'SOLDIER-' + Math.floor(Math.random() * 1000) });
-
-    socket.on('joined-successfully', ({ members, myId: id }) => {
-      myId = id;
-      updateSquadList(members);
+    socket.on('connect', () => {
+      myId = socket.id;
     });
 
-    socket.on('user-joined', ({ id, username }) => {
-      addSquadMember(id, username);
-    });
-
-    socket.on('user-left', (id) => {
-      const el = document.getElementById(`user-${id}`);
-      if (el) el.remove();
-      if (mapMarkers[id]) {
-        mapMarkers[id].map = null;
-        delete mapMarkers[id];
-      }
-    });
-
+    // Handle incoming locations from other users
     socket.on('friend-location', ({ id, username, lat, lng }) => {
-      friendLocations[id] = { lat, lng, username };
-      if (map && google.maps.marker) {
+      friendLocations[id] = { lat: Number(lat), lng: Number(lng), username };
+      updateUserList();
+
+      if (map && window.google && google.maps.marker) {
         if (mapMarkers[id]) {
-          mapMarkers[id].position = { lat, lng };
+          mapMarkers[id].position = { lat: Number(lat), lng: Number(lng) };
         } else {
           const pin = new google.maps.marker.PinElement({
             background: "#ff3333",
             borderColor: "#ffffff",
             glyphColor: "#ffffff"
           });
+
+          // FIX 2: Passing 'pin' directly instead of 'pin.element'
           mapMarkers[id] = new google.maps.marker.AdvancedMarkerElement({
-            position: { lat, lng },
+            position: { lat: Number(lat), lng: Number(lng) },
             map: map,
-            title: username,
-            content: pin.element
+            title: username || "Friend",
+            content: pin
           });
         }
       }
     });
 
-    // Non-blocking Touch Handlers for PTT Button
-    const pttBtn = document.getElementById('ptt-btn');
-    function startTransmit() {
-      if (!localStream) return;
-      pttBtn.classList.add('active');
-      pttBtn.innerText = "TRANSMITTING...";
-      localStream.getAudioTracks().forEach(t => t.enabled = true);
-      socket.emit('talk-status', true);
+    socket.on('user-disconnected', (id) => {
+      delete friendLocations[id];
+      if (mapMarkers[id]) {
+        mapMarkers[id].map = null;
+        delete mapMarkers[id];
+      }
+      updateUserList();
+    });
+
+    function updateUserList() {
+      const listEl = document.getElementById('user-list');
+      listEl.innerHTML = '';
+      for (const [id, user] of Object.entries(friendLocations)) {
+        if (id === myId) continue;
+        const li = document.createElement('li');
+        li.className = 'user-card';
+        li.innerHTML = `
+          <span>${user.username || 'User ' + id.slice(0, 4)}</span>
+          <button class="nav-btn" onclick="navigateToUser('${id}')">Navigate</button>
+        `;
+        listEl.appendChild(li);
+      }
     }
 
-    function stopTransmit() {
-      if (!localStream) return;
-      pttBtn.classList.remove('active');
-      pttBtn.innerText = "PUSH TO TRANSMIT";
-      localStream.getAudioTracks().forEach(t => t.enabled = false);
-      socket.emit('talk-status', false);
+    function showDashboard() {
+      document.getElementById('app-viewport').scrollTo({ left: 0, behavior: 'smooth' });
     }
 
-    pttBtn.addEventListener('mousedown', startTransmit);
-    pttBtn.addEventListener('mouseup', stopTransmit);
-    pttBtn.addEventListener('touchstart', startTransmit);
-    pttBtn.addEventListener('touchend', stopTransmit);
-
-    // Continuous Geolocation
-    if ("geolocation" in navigator) {
-      navigator.geolocation.watchPosition((pos) => {
-        myLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        document.getElementById('gps-status').innerText = "GPS: LOCKED";
-        socket.emit('location-update', myLatLng);
-        if (map && mapMarkers[myId]) {
-          mapMarkers[myId].position = myLatLng;
-        }
-      }, (err) => {
-        document.getElementById('gps-status').innerText = "GPS: DEFAULT";
-      }, { enableHighAccuracy: true });
-    }
-
-    // Modern 2026 Map Initialization
+    // FIX 1: Removed 'styles' array to prevent conflict with 'mapId'
     function initMap() {
+      const startPos = { lat: Number(myLatLng.lat), lng: Number(myLatLng.lng) };
+
       map = new google.maps.Map(document.getElementById("map"), {
         zoom: 14,
-        center: myLatLng,
+        center: startPos,
         mapId: "DEMO_MAP_ID",
-        disableDefaultUI: true,
-        styles: [
-          { elementType: "geometry", stylers: [{ color: "#121212" }] },
-          { elementType: "labels.text.fill", stylers: [{ color: "#00ff66" }] },
-          { featureType: "road", elementType: "geometry", stylers: [{ color: "#222222" }] }
-        ]
+        disableDefaultUI: true
       });
 
       const selfPin = new google.maps.marker.PinElement({
@@ -307,27 +214,30 @@
         glyphColor: "#000000"
       });
 
+      // FIX 2: Passing 'selfPin' directly instead of 'selfPin.element'
       mapMarkers[myId] = new google.maps.marker.AdvancedMarkerElement({
-        position: myLatLng,
+        position: startPos,
         map: map,
         title: "YOU",
-        content: selfPin.element
+        content: selfPin
       });
     }
 
-    // Modern Routes API Navigation Replacement
+    // FIX 3: Converting lat/lng values strictly to Numbers for Routes API
     async function navigateToUser(targetId) {
       const target = friendLocations[targetId];
       if (!target) return alert("Target location unavailable.");
 
-      // Scroll smoothly to Map Page
       const viewport = document.getElementById('app-viewport');
       viewport.scrollTo({ left: window.innerWidth, behavior: 'smooth' });
 
+      const originLatLng = { lat: Number(myLatLng.lat), lng: Number(myLatLng.lng) };
+      const destLatLng = { lat: Number(target.lat), lng: Number(target.lng) };
+
       try {
         const response = await google.maps.routes.Route.computeRoutes({
-          origin: { location: { latLng: myLatLng } },
-          destination: { location: { latLng: { lat: target.lat, lng: target.lng } } },
+          origin: { location: { latLng: originLatLng } },
+          destination: { location: { latLng: destLatLng } },
           travelMode: 'DRIVE'
         });
 
@@ -354,31 +264,10 @@
         console.error("Navigation routing failed:", err);
       }
     }
-
-    function updateSquadList(members) {
-      const list = document.getElementById('squad-list');
-      list.innerHTML = '';
-      members.forEach(m => addSquadMember(m.id, m.username));
-    }
-
-    function addSquadMember(id, username) {
-      const list = document.getElementById('squad-list');
-      if (document.getElementById(`user-${id}`)) return;
-      const card = document.createElement('div');
-      card.className = 'squad-card';
-      card.id = `user-${id}`;
-      card.innerHTML = `
-        <div>
-          <div class="squad-callsign">${username} ${id === myId ? '(YOU)' : ''}</div>
-          <div class="squad-status">ACTIVE SIGNAL</div>
-        </div>
-        ${id !== myId ? `<button class="nav-btn" onclick="navigateToUser('${id}')">NAV</button>` : ''}
-      `;
-      list.appendChild(card);
-    }
   </script>
 
-  <!-- Google Maps API with async loading and modern libraries -->
+  <!-- Google Maps API Script -->
+  <!-- REMEMBER: Replace YOUR_FULL_ACTUAL_API_KEY_HERE with your real key -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDtQzAOxGO5wkQuk8YI-QezE7Z-KJbGkFo&loading=async&libraries=routes,marker,geometry&callback=initMap" async defer></script>
 </body>
 </html>
