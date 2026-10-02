@@ -3,81 +3,131 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Real Talk - WebRTC Walkie Talkie</title>
+  <title>Real Talk - Walkie Talkie & Live Route Tracker</title>
+  
+  <!-- Leaflet Core CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    body { background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
     
-    .card { background: #1e1e1e; padding: 25px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; text-align: center; }
-    h2 { color: #00e676; margin-bottom: 15px; letter-spacing: 1px; }
+    .card { background: #1e1e1e; padding: 20px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 420px; text-align: center; }
+    h2 { color: #00e676; margin-bottom: 10px; letter-spacing: 1px; }
     
-    input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #333; background: #2a2a2a; color: white; border-radius: 8px; font-size: 14px; outline: none; }
+    input { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #333; background: #2a2a2a; color: white; border-radius: 8px; outline: none; font-size: 14px; }
     input:focus { border-color: #00e676; }
     
-    button.btn { width: 100%; padding: 12px; background: #00e676; color: #121212; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; font-size: 16px; transition: 0.2s; }
-    button.btn:hover { background: #00b359; }
-    
+    .btn { width: 100%; padding: 12px; background: #00e676; color: #121212; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; font-size: 16px; }
     .hidden { display: none; }
 
-    .member-list { margin: 15px 0; background: #2a2a2a; border-radius: 8px; padding: 10px; max-height: 180px; overflow-y: auto; text-align: left; }
-    .member-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #3a3a3a; font-size: 14px; }
-    .member-item:last-child { border-bottom: none; }
-    .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #444; color: #ccc; }
-    .status-badge.speaking { background: #00e676; color: #000; font-weight: bold; animation: pulse 1s infinite; }
-
-    .ptt-btn { width: 140px; height: 140px; border-radius: 50%; background: #2a2a2a; border: 4px solid #00e676; color: #00e676; font-size: 18px; font-weight: bold; margin: 20px auto; cursor: pointer; user-select: none; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 0.1s; }
-    .ptt-btn:active, .ptt-btn.active { background: #00e676; color: #121212; transform: scale(0.95); box-shadow: 0 0 20px #00e676; }
+    /* Map & Routing Styling */
+    #map { width: 100%; height: 260px; border-radius: 12px; margin: 12px 0; border: 1px solid #333; background: #222; }
     
-    @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+    .leaflet-routing-container { display: none !important; }
+
+    .member-list { margin: 10px 0; background: #2a2a2a; border-radius: 8px; padding: 8px; max-height: 140px; overflow-y: auto; text-align: left; }
+    .member-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid #3a3a3a; font-size: 13px; }
+    .member-item:last-child { border-bottom: none; }
+    
+    .status-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #444; color: #ccc; }
+    .status-badge.speaking { background: #00e676; color: #000; font-weight: bold; }
+
+    .route-btn { background: #00e676; color: #121212; border: none; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; margin-left: 6px; }
+    .clear-route-btn { background: #ff5252; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
+
+    .ptt-btn { width: 110px; height: 110px; border-radius: 50%; background: #2a2a2a; border: 4px solid #00e676; color: #00e676; font-size: 14px; font-weight: bold; margin: 10px auto; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; }
+    .ptt-btn:active, .ptt-btn.active { background: #00e676; color: #121212; transform: scale(0.95); box-shadow: 0 0 15px #00e676; }
   </style>
 </head>
 <body>
 
-  <!-- STEP 1: AUTHENTICATION LOCK UI -->
+  <!-- AUTHENTICATION GATEWAY -->
   <div id="auth-box" class="card">
     <h2>REAL TALK</h2>
-    <p style="color:#aaa; font-size:13px; margin-bottom:15px;">Walkie Talkie Gateway</p>
+    <p style="color:#aaa; font-size:12px; margin-bottom:12px;">Walkie Talkie + Live Route Navigation</p>
     <input type="text" id="username" placeholder="Your Handle / Name" required />
-    <input type="text" id="room" placeholder="Channel Name (e.g. Squad1)" value="Squad1" required />
+    <input type="text" id="room" placeholder="Server Channel" value="Squad1" required />
     <input type="password" id="passcode" placeholder="Security Lock Passcode" required />
-    <button class="btn" onclick="joinWalkieTalkie()">Enter Frequency</button>
+    <button class="btn" onclick="joinWalkieTalkie()">Connect Frequency</button>
   </div>
 
-  <!-- STEP 2: ACTIVE WALKIE TALKIE INTERFACE -->
+  <!-- MAIN APP INTERFACE -->
   <div id="app-box" class="card hidden">
     <h2>REAL TALK</h2>
-    <p id="room-display" style="color:#888; font-size:12px;"></p>
+    <p id="room-display" style="color:#888; font-size:11px;"></p>
 
-    <!-- FRIEND TRACKER LIST -->
-    <div style="margin-top:15px; font-size:12px; color:#aaa; text-align:left;">CONNECTED MEMBERS:</div>
+    <!-- LIVE MAP CONTAINER -->
+    <div id="map"></div>
+
+    <!-- ROUTE CONTROLS & INFO -->
+    <button id="clear-route" class="clear-route-btn hidden" onclick="clearCurrentRoute()">Clear Navigation Route</button>
+    <p id="route-info" style="color:#00e676; font-size:12px; font-weight:bold; margin-bottom:8px;"></p>
+
+    <!-- MEMBER LIST -->
     <div id="member-list" class="member-list"></div>
 
     <!-- PUSH TO TALK BUTTON -->
-    <button id="ptt-btn" class="ptt-btn" onmousedown="startTransmitting()" onmouseup="stopTransmitting()" ontouchstart="startTransmitting()" ontouchend="stopTransmitting()">
-      <span>HOLD TO</span>
-      <span>TALK</span>
-    </button>
+    <button id="ptt-btn" class="ptt-btn" onmousedown="startTransmitting()" onmouseup="stopTransmitting()" ontouchstart="startTransmitting()" ontouchend="stopTransmitting()">PUSH TO TALK</button>
   </div>
 
   <div id="audio-container"></div>
 
+  <!-- Leaflet & Routing Libraries -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+
   <script>
     const socket = io();
     let localStream = null;
     const peers = {};
     let myId = null;
-
-    const rtcConfig = {
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    };
+    
+    let map = null;
+    let myLatLng = null;
+    const friendLocations = {};
+    const mapMarkers = {};
+    let routingControl = null;
 
     async function initAudio() {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         localStream.getAudioTracks().forEach(track => track.enabled = false);
       } catch (err) {
-        alert("Microphone permission is required to use Real Talk!");
+        alert("Microphone permission required!");
+      }
+    }
+
+    function initMap() {
+      // Initialize Leaflet map
+      map = L.map('map').setView([17.63, 78.96], 12);
+      
+      // Standard OpenStreetMap Tile Server
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      // Recalculate container dimensions
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 400);
+
+      // Track live GPS location
+      if ("geolocation" in navigator) {
+        navigator.geolocation.watchPosition((position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          myLatLng = [lat, lng];
+
+          socket.emit('location-update', { lat, lng });
+          updateMarker(myId, document.getElementById('username').value + " (You)", lat, lng, true);
+        }, (err) => console.log("Location access error:", err), {
+          enableHighAccuracy: true
+        });
       }
     }
 
@@ -86,10 +136,7 @@
       const room = document.getElementById('room').value.trim();
       const passcode = document.getElementById('passcode').value.trim();
 
-      if (!username || !room || !passcode) {
-        alert("Please fill in all details.");
-        return;
-      }
+      if (!username || !room || !passcode) return alert("Fill in all details.");
 
       initAudio().then(() => {
         socket.emit('join-room', { room, username, passcode });
@@ -100,32 +147,90 @@
       myId = id;
       document.getElementById('auth-box').classList.add('hidden');
       document.getElementById('app-box').classList.remove('hidden');
-      document.getElementById('room-display').innerText = `Active Channel: ${document.getElementById('room').value.toUpperCase()}`;
+      document.getElementById('room-display').innerText = `SERVER: ${document.getElementById('room').value.toUpperCase()}`;
       
+      initMap();
       updateMemberList(members);
 
       members.forEach(member => {
-        if (member.id !== myId) {
-          createPeerConnection(member.id, true);
-        }
+        if (member.id !== myId) createPeerConnection(member.id, true);
       });
     });
 
     socket.on('error-msg', (msg) => alert(msg));
-
-    socket.on('user-joined', ({ id, username }) => {
-      addMemberToList(id, username);
-    });
+    socket.on('user-joined', ({ id, username }) => addMemberToList(id, username));
 
     socket.on('user-left', (id) => {
       removeMemberFromList(id);
-      if (peers[id]) {
-        peers[id].close();
-        delete peers[id];
+      delete friendLocations[id];
+      if (mapMarkers[id]) {
+        map.removeLayer(mapMarkers[id]);
+        delete mapMarkers[id];
       }
-      const audioEl = document.getElementById(`audio-${id}`);
-      if (audioEl) audioEl.remove();
+      if (peers[id]) { peers[id].close(); delete peers[id]; }
+      const el = document.getElementById(`audio-${id}`);
+      if (el) el.remove();
     });
+
+    socket.on('friend-location', ({ id, username, lat, lng }) => {
+      friendLocations[id] = { lat, lng, username };
+      updateMarker(id, username, lat, lng, false);
+    });
+
+    function updateMarker(id, username, lat, lng, isSelf) {
+      if (!map) return;
+
+      const popupContent = isSelf 
+        ? `<b>${username}</b>` 
+        : `<b>${username}</b><br/><button class="route-btn" onclick="drawRouteTo('${id}')">Route Here</button>`;
+
+      if (mapMarkers[id]) {
+        mapMarkers[id].setLatLng([lat, lng]);
+        mapMarkers[id].setPopupContent(popupContent);
+      } else {
+        mapMarkers[id] = L.marker([lat, lng]).addTo(map).bindPopup(popupContent);
+        if (isSelf) map.setView([lat, lng], 14);
+      }
+    }
+
+    function drawRouteTo(targetId) {
+      if (!myLatLng) return alert("Waiting for your GPS location...");
+      const target = friendLocations[targetId];
+      if (!target) return alert("Target location unavailable.");
+
+      clearCurrentRoute();
+
+      routingControl = L.Routing.control({
+        waypoints: [
+          L.latLng(myLatLng[0], myLatLng[1]),
+          L.latLng(target.lat, target.lng)
+        ],
+        lineOptions: {
+          styles: [{ color: '#00e676', weight: 5, opacity: 0.8 }]
+        },
+        createMarker: () => null,
+        addWaypoints: false
+      }).addTo(map);
+
+      routingControl.on('routesfound', (e) => {
+        const routes = e.routes;
+        const summary = routes[0].summary;
+        const distanceKm = (summary.totalDistance / 1000).toFixed(1);
+        const timeMin = Math.round(summary.totalTime / 60);
+
+        document.getElementById('route-info').innerText = `Route to ${target.username}: ${distanceKm} km (~${timeMin} mins)`;
+        document.getElementById('clear-route').classList.remove('hidden');
+      });
+    }
+
+    function clearCurrentRoute() {
+      if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+      }
+      document.getElementById('route-info').innerText = '';
+      document.getElementById('clear-route').classList.add('hidden');
+    }
 
     socket.on('user-talk-status', ({ id, isSpeaking }) => {
       const badge = document.getElementById(`status-${id}`);
@@ -136,12 +241,11 @@
     });
 
     function createPeerConnection(targetId, isInitiator) {
-      const pc = new RTCPeerConnection(rtcConfig);
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
       peers[targetId] = pc;
-
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-      pc.ontrack = (event) => {
+      pc.ontrack = (e) => {
         let audio = document.getElementById(`audio-${targetId}`);
         if (!audio) {
           audio = document.createElement('audio');
@@ -149,29 +253,24 @@
           audio.autoplay = true;
           document.getElementById('audio-container').appendChild(audio);
         }
-        audio.srcObject = event.streams[0];
+        audio.srcObject = e.streams[0];
       };
 
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit('signal', { targetId, signal: { candidate: event.candidate } });
-        }
+      pc.onicecandidate = (e) => {
+        if (e.candidate) socket.emit('signal', { targetId, signal: { candidate: e.candidate } });
       };
 
       if (isInitiator) {
         pc.createOffer().then(offer => {
           pc.setLocalDescription(offer);
-          socket.emit('signal', { targetId, signal: { sdp: offer } });
+          socket.emit('signal', { targetId: senderId, signal: { sdp: offer } });
         });
       }
-
       return pc;
     }
 
     socket.on('signal', async ({ senderId, signal }) => {
-      let pc = peers[senderId];
-      if (!pc) pc = createPeerConnection(senderId, false);
-
+      let pc = peers[senderId] || createPeerConnection(senderId, false);
       if (signal.sdp) {
         await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
         if (signal.sdp.type === 'offer') {
@@ -187,14 +286,14 @@
     function startTransmitting() {
       if (!localStream) return;
       document.getElementById('ptt-btn').classList.add('active');
-      localStream.getAudioTracks().forEach(track => track.enabled = true);
+      localStream.getAudioTracks().forEach(t => t.enabled = true);
       socket.emit('talk-status', true);
     }
 
     function stopTransmitting() {
       if (!localStream) return;
       document.getElementById('ptt-btn').classList.remove('active');
-      localStream.getAudioTracks().forEach(track => track.enabled = false);
+      localStream.getAudioTracks().forEach(t => t.enabled = false);
       socket.emit('talk-status', false);
     }
 
@@ -207,12 +306,17 @@
     function addMemberToList(id, username) {
       const list = document.getElementById('member-list');
       if (document.getElementById(`member-${id}`)) return;
-
       const item = document.createElement('div');
       item.className = 'member-item';
       item.id = `member-${id}`;
+
+      const routeBtn = (id !== myId) ? `<button class="route-btn" onclick="drawRouteTo('${id}')">Route</button>` : '';
+
       item.innerHTML = `
-        <span>${username} ${id === myId ? '<b>(You)</b>' : ''}</span>
+        <div>
+          <span>${username} ${id === myId ? '<b>(You)</b>' : ''}</span>
+          ${routeBtn}
+        </div>
         <span id="status-${id}" class="status-badge">IDLE</span>
       `;
       list.appendChild(item);
