@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Real Talk HUD</title>
+  <title>Squad Radio Comms</title>
   <style>
     * {
       box-sizing: border-box;
@@ -15,102 +15,125 @@
     body, html {
       width: 100%;
       height: 100%;
-      overflow: hidden;
-      background-color: #0a0a0a;
+      background-color: #0d0d0d;
       color: #00ff66;
-    }
-
-    #app-viewport {
-      display: flex;
-      width: 200vw;
-      height: 100vh;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    #app-viewport::-webkit-scrollbar { display: none; }
-    #app-viewport { -ms-overflow-style: none; scrollbar-width: none; }
-
-    .screen {
-      width: 100vw;
-      height: 100vh;
-      flex-shrink: 0;
-      scroll-snap-align: start;
-      position: relative;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
-    /* DASHBOARD / COMMS SCREEN */
-    #dashboard {
-      padding: 16px;
-      background: #0a0a0a;
-      justify-content: flex-start;
+    #app-container {
+      width: 100%;
+      height: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       align-items: center;
-      overflow-y: auto;
+      background: #141414;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
     }
 
-    .status-bar {
+    .header {
       width: 100%;
       display: flex;
       justify-content: space-between;
-      font-size: 11px;
-      color: #00ff66;
-      margin-bottom: 12px;
-      letter-spacing: 1px;
-      font-weight: bold;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #222;
     }
 
-    /* PTT TRANSMIT BUTTON */
-    #ptt-btn {
-      width: 100%;
-      height: 85px;
-      border-radius: 12px;
-      border: 2px solid #00ff66;
-      background: rgba(0, 255, 102, 0.08);
+    .status-badge {
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: #1a2a1e;
       color: #00ff66;
-      font-weight: 800;
-      font-size: 18px;
-      letter-spacing: 2px;
+      border: 1px solid #00ff66;
+    }
+
+    .status-badge.offline {
+      background: #2a1a1a;
+      color: #ff3333;
+      border-color: #ff3333;
+    }
+
+    /* PTT BUTTON */
+    .ptt-wrapper {
+      width: 100%;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
+      margin: 20px 0;
+    }
+
+    #ptt-btn {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      border: 4px solid #00ff66;
+      background: radial-gradient(circle, rgba(0,255,102,0.15) 0%, rgba(0,0,0,0.8) 100%);
+      color: #00ff66;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 2px;
       cursor: pointer;
-      box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+      box-shadow: 0 0 25px rgba(0, 255, 102, 0.2);
+      outline: none;
       touch-action: manipulation;
       user-select: none;
-      -webkit-user-select: none;
+      transition: all 0.1s ease;
     }
 
-    #ptt-btn:active, #ptt-btn.active {
+    #ptt-btn:active, #ptt-btn.transmitting {
       background: #00ff66;
       color: #000;
-      box-shadow: 0 0 30px #00ff66;
+      box-shadow: 0 0 50px #00ff66;
+      transform: scale(0.96);
     }
 
-    .swipe-hint {
-      font-size: 10px;
-      color: #888;
-      margin: 12px 0 6px 0;
-      text-transform: uppercase;
+    /* ALERT / EMERGENCY BUTTON */
+    #alert-btn {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 51, 51, 0.1);
+      border: 1px solid #ff3333;
+      color: #ff3333;
+      font-weight: bold;
       letter-spacing: 1px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    #alert-btn:active {
+      background: #ff3333;
+      color: #000;
+    }
+
+    /* SQUAD LIST */
+    .squad-section {
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-top: 15px;
     }
 
     .squad-title {
-      width: 100%;
-      font-size: 12px;
-      color: #aaa;
-      margin-top: 10px;
-      margin-bottom: 8px;
+      font-size: 11px;
+      color: #888;
       text-transform: uppercase;
-      border-bottom: 1px solid #222;
-      padding-bottom: 4px;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
     }
 
     #squad-list {
-      width: 100%;
       flex: 1;
       overflow-y: auto;
       display: flex;
@@ -119,277 +142,249 @@
     }
 
     .squad-card {
+      background: #1c1c1c;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border-left: 3px solid #00ff66;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #141414;
-      border-left: 4px solid #00ff66;
-      padding: 10px 12px;
-      border-radius: 6px;
     }
 
-    .squad-callsign { color: #fff; font-weight: 700; font-size: 13px; }
-    .squad-status { font-size: 10px; color: #888; }
-
-    .nav-btn {
-      background: #00ff66;
-      color: #000;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-weight: 800;
-      font-size: 11px;
-      cursor: pointer;
+    .squad-card.talking {
+      border-left-color: #ffcc00;
+      background: #262215;
     }
 
-    /* MAP SCREEN */
-    #page-map { background: #000; }
-    #map { width: 100%; height: 100%; }
+    .callsign {
+      color: #fff;
+      font-weight: bold;
+      font-size: 13px;
+    }
 
-    #map-overlay {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      background: rgba(0, 0, 0, 0.85);
-      border: 1px solid #00ff66;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 11px;
-      color: #00ff66;
-      pointer-events: none;
-      z-index: 10;
+    .member-status {
+      font-size: 10px;
+      color: #888;
     }
   </style>
 </head>
 <body>
 
-  <div id="app-viewport">
-    <!-- Screen 1: Dashboard / PTT / Squad -->
-    <div class="screen" id="dashboard">
-      <div class="status-bar">
-        <span id="room-tag">NET: ONLINE</span>
-        <span id="gps-status">GPS: ACQUIRING...</span>
-      </div>
-
-      <!-- PTT Transmit Button -->
-      <button id="ptt-btn">PUSH TO TRANSMIT</button>
-
-      <div class="swipe-hint">SWIPE LEFT FOR MAP &rarr;</div>
-      <div class="squad-title">SQUAD MATRIX</div>
-      <div id="squad-list"></div>
+  <div id="app-container">
+    <div class="header">
+      <h3 style="letter-spacing: 1px;">SQUAD RADIO</h3>
+      <div id="connection-status" class="status-badge">CONNECTING...</div>
     </div>
 
-    <!-- Screen 2: Map View -->
-    <div class="screen" id="page-map">
-      <div id="map-overlay">&larr; SWIPE RIGHT FOR COMMS</div>
-      <div id="map"></div>
+    <div class="ptt-wrapper">
+      <button id="ptt-btn">HOLD TO TALK</button>
+      <button id="alert-btn" onclick="triggerAlert()">⚠️ SEND ALERT</button>
+    </div>
+
+    <div class="squad-section">
+      <div class="squad-title">ACTIVE FREQUENCY</div>
+      <div id="squad-list"></div>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    let map;
-    let myId = null;
+    let audioCtx = null;
     let localStream = null;
-    let myLatLng = { lat: 17.63, lng: 78.96 };
-    const friendLocations = {};
-    const mapMarkers = {};
-    let currentPolyline = null;
+    let myId = null;
+    const callsign = 'SOLDIER-' + Math.floor(1000 + Math.random() * 9000);
 
-    // Audio / PTT Setup
+    // Audio Context Setup
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // Voice & Sound Synthesizer
+    function speak(text, pitchModifier = 1) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.1;
+      utterance.pitch = pitchModifier;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // Sound 1: User Joined Ping (Clean High Double-Tone)
+    function playJoinPing() {
+      const ctx = getAudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(1760, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    }
+
+    // Sound 2: Alert Ping (Urgent Staccato Alarm)
+    function playAlertPing() {
+      const ctx = getAudioContext();
+      for (let i = 0; i < 3; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1200, ctx.currentTime + (i * 0.12));
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + (i * 0.12));
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (i * 0.12) + 0.08);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + (i * 0.12));
+        osc.stop(ctx.currentTime + (i * 0.12) + 0.08);
+      }
+    }
+
+    // Sound 3: Glitch Noise for Network Errors
+    function playGlitchNoise() {
+      const ctx = getAudioContext();
+      const bufferSize = ctx.sampleRate * 0.2; // 200ms
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1000;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+
+      whiteNoise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      whiteNoise.start();
+    }
+
+    // Microphone Setup
     async function initAudio() {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         localStream.getAudioTracks().forEach(t => t.enabled = false);
       } catch (e) {
-        console.warn("Microphone permission pending or denied.");
+        console.warn("Microphone access pending or denied.");
       }
     }
-    initAudio();
 
+    // Push To Talk Controls
     const pttBtn = document.getElementById('ptt-btn');
+
     function startTransmit() {
+      getAudioContext();
       if (!localStream) return;
-      pttBtn.classList.add('active');
-      pttBtn.innerText = "TRANSMITTING...";
+      pttBtn.classList.add('transmitting');
+      pttBtn.innerText = "TRANSMITTING";
       localStream.getAudioTracks().forEach(t => t.enabled = true);
-      socket.emit('talk-status', true);
+      socket.emit('talk-status', { talking: true, username: callsign });
     }
 
     function stopTransmit() {
       if (!localStream) return;
-      pttBtn.classList.remove('active');
-      pttBtn.innerText = "PUSH TO TRANSMIT";
+      pttBtn.classList.remove('transmitting');
+      pttBtn.innerText = "HOLD TO TALK";
       localStream.getAudioTracks().forEach(t => t.enabled = false);
-      socket.emit('talk-status', false);
+      socket.emit('talk-status', { talking: false, username: callsign });
     }
 
     pttBtn.addEventListener('mousedown', startTransmit);
     pttBtn.addEventListener('mouseup', stopTransmit);
-    pttBtn.addEventListener('touchstart', startTransmit);
-    pttBtn.addEventListener('touchend', stopTransmit);
+    pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startTransmit(); });
+    pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopTransmit(); });
 
-    // Join room on load
-    socket.emit('join-room', { room: 'ALPHA-1', username: 'SOLDIER-' + Math.floor(Math.random() * 1000) });
+    function triggerAlert() {
+      getAudioContext();
+      socket.emit('send-alert', { username: callsign });
+    }
 
-    socket.on('joined-successfully', ({ members, myId: id }) => {
-      myId = id;
-      updateSquadList(members);
+    // Socket Event Handlers
+    socket.on('connect', () => {
+      myId = socket.id;
+      const statusEl = document.getElementById('connection-status');
+      statusEl.innerText = 'ONLINE';
+      statusEl.classList.remove('offline');
+
+      speak("Connected");
+      socket.emit('join-room', { room: 'ALPHA-1', username: callsign });
+    });
+
+    socket.on('disconnect', () => {
+      const statusEl = document.getElementById('connection-status');
+      statusEl.innerText = 'OFFLINE';
+      statusEl.classList.add('offline');
+
+      playGlitchNoise();
+      setTimeout(() => speak("Network error", 0.7), 250);
+    });
+
+    socket.on('joined-successfully', ({ members }) => {
+      initAudio();
+      renderSquad(members);
     });
 
     socket.on('user-joined', ({ id, username }) => {
-      addSquadMember(id, username);
+      playJoinPing();
+      setTimeout(() => speak(`${username} is live`), 300);
+      addOrUpdateMember(id, username, false);
     });
 
-    socket.on('user-left', (id) => {
+    socket.on('user-left', ({ id, username }) => {
+      speak("Disconnected");
       const el = document.getElementById(`user-${id}`);
       if (el) el.remove();
-      if (mapMarkers[id]) {
-        mapMarkers[id].map = null;
-        delete mapMarkers[id];
-      }
     });
 
-    // Handle incoming location updates
-    socket.on('friend-location', ({ id, username, lat, lng }) => {
-      friendLocations[id] = { lat: Number(lat), lng: Number(lng), username };
-
-      if (map && window.google && google.maps.marker) {
-        if (mapMarkers[id]) {
-          mapMarkers[id].position = { lat: Number(lat), lng: Number(lng) };
-        } else {
-          const pin = new google.maps.marker.PinElement({
-            background: "#ff3333",
-            borderColor: "#ffffff",
-            glyphColor: "#ffffff"
-          });
-
-          mapMarkers[id] = new google.maps.marker.AdvancedMarkerElement({
-            position: { lat: Number(lat), lng: Number(lng) },
-            map: map,
-            title: username || "Squad Member",
-            content: pin
-          });
-        }
-      }
+    socket.on('user-talk-status', ({ id, username, talking }) => {
+      addOrUpdateMember(id, username, talking);
     });
 
-    // Geolocation Tracking
-    if (navigator.geolocation) {
-      navigator.geolocation.watchPosition(
-        (position) => {
-          myLatLng = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
+    socket.on('receive-alert', ({ username }) => {
+      playAlertPing();
+      setTimeout(() => speak(`${username} sent alert`, 1.2), 400);
+    });
 
-          document.getElementById('gps-status').innerText = "GPS: LOCKED";
-          socket.emit('location-update', myLatLng);
-
-          if (map && mapMarkers[myId]) {
-            mapMarkers[myId].position = myLatLng;
-          }
-        },
-        (err) => {
-          document.getElementById('gps-status').innerText = "GPS: OFF";
-        },
-        { enableHighAccuracy: true }
-      );
-    }
-
-    function updateSquadList(members) {
+    function renderSquad(members) {
       const listEl = document.getElementById('squad-list');
       listEl.innerHTML = '';
-      members.forEach(m => addSquadMember(m.id, m.username));
+      members.forEach(m => addOrUpdateMember(m.id, m.username, false));
     }
 
-    function addSquadMember(id, username) {
+    function addOrUpdateMember(id, username, talking) {
       const listEl = document.getElementById('squad-list');
-      if (document.getElementById(`user-${id}`)) return;
+      let card = document.getElementById(`user-${id}`);
 
-      const card = document.createElement('div');
-      card.className = 'squad-card';
-      card.id = `user-${id}`;
+      if (!card) {
+        card = document.createElement('div');
+        card.id = `user-${id}`;
+        listEl.appendChild(card);
+      }
+
+      card.className = `squad-card ${talking ? 'talking' : ''}`;
       card.innerHTML = `
         <div>
-          <div class="squad-callsign">${username} ${id === myId ? '(YOU)' : ''}</div>
-          <div class="squad-status">ACTIVE SIGNAL</div>
+          <div class="callsign">${username || 'SOLDIER'} ${id === myId ? '(YOU)' : ''}</div>
+          <div class="member-status">${talking ? 'TRANSMITTING...' : 'STANDBY'}</div>
         </div>
-        ${id !== myId ? `<button class="nav-btn" onclick="navigateToUser('${id}')">NAV</button>` : ''}
       `;
-      listEl.appendChild(card);
-    }
-
-    // Google Maps Initialization
-    function initMap() {
-      const startPos = { lat: Number(myLatLng.lat), lng: Number(myLatLng.lng) };
-
-      map = new google.maps.Map(document.getElementById("map"), {
-        zoom: 14,
-        center: startPos,
-        mapId: "DEMO_MAP_ID",
-        disableDefaultUI: true
-      });
-
-      const selfPin = new google.maps.marker.PinElement({
-        background: "#00ff66",
-        borderColor: "#ffffff",
-        glyphColor: "#000000"
-      });
-
-      mapMarkers[myId] = new google.maps.marker.AdvancedMarkerElement({
-        position: startPos,
-        map: map,
-        title: "YOU",
-        content: selfPin
-      });
-    }
-
-    // Routes API Navigation
-    async function navigateToUser(targetId) {
-      const target = friendLocations[targetId];
-      if (!target) return alert("Target location unavailable.");
-
-      const viewport = document.getElementById('app-viewport');
-      viewport.scrollTo({ left: window.innerWidth, behavior: 'smooth' });
-
-      const originLatLng = { lat: Number(myLatLng.lat), lng: Number(myLatLng.lng) };
-      const destLatLng = { lat: Number(target.lat), lng: Number(target.lng) };
-
-      try {
-        const response = await google.maps.routes.Route.computeRoutes({
-          origin: { location: { latLng: originLatLng } },
-          destination: { location: { latLng: destLatLng } },
-          travelMode: 'DRIVE'
-        });
-
-        if (response.routes && response.routes.length > 0) {
-          const route = response.routes[0];
-          const path = google.maps.geometry.encoding.decodePath(route.polyline.encodedPolyline);
-
-          if (currentPolyline) currentPolyline.setMap(null);
-
-          currentPolyline = new google.maps.Polyline({
-            path: path,
-            geodesic: true,
-            strokeColor: "#00ff66",
-            strokeOpacity: 0.9,
-            strokeWeight: 5,
-            map: map
-          });
-
-          const bounds = new google.maps.LatLngBounds();
-          path.forEach(pt => bounds.extend(pt));
-          map.fitBounds(bounds);
-        }
-      } catch (err) {
-        console.error("Navigation routing failed:", err);
-      }
     }
   </script>
-
-  <!-- Replace YOUR_FULL_ACTUAL_API_KEY_HERE with your Google Maps API Key -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDtQzAOxGO5wkQuk8YI-QezE7Z-KJbGkFo&loading=async&libraries=routes,marker,geometry&callback=initMap" async defer></script>
 </body>
 </html>
