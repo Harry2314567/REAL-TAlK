@@ -2,82 +2,175 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Real Talk - Walkie Talkie & Live Route Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TACTICAL HUD - Google Route & Tactical Voice</title>
   
-  <!-- Leaflet Core CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Leaflet Routing Machine CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: #121212; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
+    body { background: #050b08; color: #00ff66; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 5px; overflow: hidden; }
     
-    .card { background: #1e1e1e; padding: 20px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 420px; text-align: center; }
-    h2 { color: #00e676; margin-bottom: 10px; letter-spacing: 1px; }
-    
-    input { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #333; background: #2a2a2a; color: white; border-radius: 8px; outline: none; font-size: 14px; }
-    input:focus { border-color: #00e676; }
-    
-    .btn { width: 100%; padding: 12px; background: #00e676; color: #121212; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; font-size: 16px; }
-    .hidden { display: none; }
+    /* Optimized ultra-compact layout for smartwatch screens */
+    .watch-card {
+      background: rgba(10, 20, 15, 0.95);
+      border: 2px solid #00ff66;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.25);
+      width: 100%;
+      max-width: 320px;
+      padding: 10px;
+      text-align: center;
+    }
 
-    /* Map & Routing Styling */
-    #map { width: 100%; height: 260px; border-radius: 12px; margin: 12px 0; border: 1px solid #333; background: #222; }
-    
-    .leaflet-routing-container { display: none !important; }
+    h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 5px #00ff66; margin-bottom: 6px; }
+    p.sub { font-size: 9px; color: #00aa44; margin-bottom: 8px; text-transform: uppercase; }
 
-    .member-list { margin: 10px 0; background: #2a2a2a; border-radius: 8px; padding: 8px; max-height: 140px; overflow-y: auto; text-align: left; }
-    .member-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid #3a3a3a; font-size: 13px; }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin: 4px 0;
+      border: 1px solid #00aa44;
+      background: #021208;
+      color: #00ff66;
+      border-radius: 4px;
+      outline: none;
+      font-size: 11px;
+    }
+    input:focus { border-color: #00ff66; box-shadow: 0 0 5px #00ff66; }
+
+    .btn-hud {
+      width: 100%;
+      padding: 8px;
+      background: #00ff66;
+      color: #000;
+      border: none;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 6px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .hidden { display: none !important; }
+
+    /* Tactical Map Styling */
+    #map {
+      width: 100%;
+      height: 160px;
+      border-radius: 8px;
+      border: 1px solid #00ff66;
+      margin: 6px 0;
+    }
+
+    .status-hud {
+      font-size: 9px;
+      color: #00ff66;
+      margin-bottom: 4px;
+      text-align: left;
+      background: rgba(0, 255, 102, 0.1);
+      padding: 4px;
+      border-radius: 4px;
+    }
+
+    .member-list {
+      margin: 4px 0;
+      background: #021208;
+      border: 1px solid #00aa44;
+      border-radius: 4px;
+      padding: 4px;
+      max-height: 80px;
+      overflow-y: auto;
+      text-align: left;
+    }
+    .member-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px;
+      border-bottom: 1px solid #003311;
+      font-size: 10px;
+    }
     .member-item:last-child { border-bottom: none; }
+
+    .route-btn {
+      background: #00ff66;
+      color: #000;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 2px;
+      font-size: 9px;
+      font-weight: bold;
+      cursor: pointer;
+    }
     
-    .status-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #444; color: #ccc; }
-    .status-badge.speaking { background: #00e676; color: #000; font-weight: bold; }
+    .clear-btn {
+      background: #ff3333;
+      color: #fff;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 4px;
+    }
 
-    .route-btn { background: #00e676; color: #121212; border: none; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; margin-left: 6px; }
-    .clear-route-btn { background: #ff5252; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 8px; }
-
-    .ptt-btn { width: 110px; height: 110px; border-radius: 50%; background: #2a2a2a; border: 4px solid #00e676; color: #00e676; font-size: 14px; font-weight: bold; margin: 10px auto; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; }
-    .ptt-btn:active, .ptt-btn.active { background: #00e676; color: #121212; transform: scale(0.95); box-shadow: 0 0 15px #00e676; }
+    .ptt-btn {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #021208;
+      border: 3px solid #00ff66;
+      color: #00ff66;
+      font-size: 10px;
+      font-weight: bold;
+      margin: 6px auto;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 10px rgba(0,255,102,0.2);
+    }
+    .ptt-btn:active, .ptt-btn.active {
+      background: #00ff66;
+      color: #000;
+      box-shadow: 0 0 20px #00ff66;
+    }
   </style>
 </head>
 <body>
 
-  <!-- AUTHENTICATION GATEWAY -->
-  <div id="auth-box" class="card">
-    <h2>REAL TALK</h2>
-    <p style="color:#aaa; font-size:12px; margin-bottom:12px;">Walkie Talkie + Live Route Navigation</p>
-    <input type="text" id="username" placeholder="Your Handle / Name" required />
-    <input type="text" id="room" placeholder="Server Channel" value="Squad1" required />
-    <input type="password" id="passcode" placeholder="Security Lock Passcode" required />
-    <button class="btn" onclick="joinWalkieTalkie()">Connect Frequency</button>
+  <!-- AUTHENTICATION SCREEN -->
+  <div id="auth-box" class="watch-card">
+    <h2>[ TACTICAL HUD ]</h2>
+    <p class="sub">WARFIGHTER NAV SYSTEM</p>
+    <input type="text" id="username" placeholder="CALLSIGN / HANDLE" required />
+    <input type="text" id="room" placeholder="SQUAD FREQUENCY" value="ALPHA-1" required />
+    <input type="password" id="passcode" placeholder="ENCRYPTION KEY" required />
+    <button class="btn-hud" onclick="joinWalkieTalkie()">AUTHENTICATE</button>
   </div>
 
-  <!-- MAIN APP INTERFACE -->
-  <div id="app-box" class="card hidden">
-    <h2>REAL TALK</h2>
-    <p id="room-display" style="color:#888; font-size:11px;"></p>
+  <!-- MAIN HUD DISPLAY -->
+  <div id="app-box" class="watch-card hidden">
+    <h2>[ NET ACTIVE ]</h2>
+    <div id="status-hud" class="status-hud">GRID: INITIALIZING GPS...</div>
 
-    <!-- LIVE MAP CONTAINER -->
+    <!-- GOOGLE MAP DISPLAY -->
     <div id="map"></div>
 
-    <!-- ROUTE CONTROLS & INFO -->
-    <button id="clear-route" class="clear-route-btn hidden" onclick="clearCurrentRoute()">Clear Navigation Route</button>
-    <p id="route-info" style="color:#00e676; font-size:12px; font-weight:bold; margin-bottom:8px;"></p>
+    <button id="clear-route" class="clear-btn hidden" onclick="clearCurrentRoute()">ABORT ROUTE NAV</button>
 
-    <!-- MEMBER LIST -->
+    <!-- SQUAD MATRIX -->
     <div id="member-list" class="member-list"></div>
 
-    <!-- PUSH TO TALK BUTTON -->
-    <button id="ptt-btn" class="ptt-btn" onmousedown="startTransmitting()" onmouseup="stopTransmitting()" ontouchstart="startTransmitting()" ontouchend="stopTransmitting()">PUSH TO TALK</button>
+    <!-- PUSH TO TALK COMMS -->
+    <button id="ptt-btn" class="ptt-btn" onmousedown="startTransmitting()" onmouseup="stopTransmitting()" ontouchstart="startTransmitting()" ontouchend="stopTransmitting()">TRANSMIT</button>
   </div>
 
   <div id="audio-container"></div>
 
-  <!-- Leaflet & Routing Libraries -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 
   <script>
@@ -86,48 +179,84 @@
     const peers = {};
     let myId = null;
     
+    // Google Maps & Navigation State
     let map = null;
+    let directionsService = null;
+    let directionsRenderer = null;
     let myLatLng = null;
     const friendLocations = {};
     const mapMarkers = {};
-    let routingControl = null;
+
+    // Military Voice Synthesizer
+    function tacticalVoiceSpeak(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel(); // Stop ongoing speech
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.pitch = 0.6; // Deep, commanding tone
+      utterance.rate = 1.05; // Rapid tactical delivery
+      utterance.volume = 1.0;
+      
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => v.lang.includes('en') && v.name.toLowerCase().includes('male'));
+      if (preferredVoice) utterance.voice = preferredVoice;
+
+      window.speechSynthesis.speak(utterance);
+    }
 
     async function initAudio() {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         localStream.getAudioTracks().forEach(track => track.enabled = false);
       } catch (err) {
-        alert("Microphone permission required!");
+        alert("COMMS ERROR: MICROPHONE ACCESS DENIED!");
       }
     }
 
-    function initMap() {
-      // Initialize Leaflet map
-      map = L.map('map').setView([17.63, 78.96], 12);
-      
-      // Standard OpenStreetMap Tile Server
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
-      }).addTo(map);
+    function initGoogleMap() {
+      // Dark High-Contrast Tactical Map Styling for low-power smartwatches
+      const darkTacticalStyle = [
+        { elementType: "geometry", stylers: [{ color: "#09120c" }] },
+        { elementType: "labels.text.stroke", stylers: [{ color: "#09120c" }] },
+        { elementType: "labels.text.fill", stylers: [{ color: "#00ff66" }] },
+        { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#00ff66" }] },
+        { featureType: "road", elementType: "geometry", stylers: [{ color: "#16331e" }] },
+        { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#00ff66" }] },
+        { featureType: "water", elementType: "geometry", stylers: [{ color: "#020a05" }] }
+      ];
 
-      // Recalculate container dimensions
-      setTimeout(() => {
-        if (map) map.invalidateSize();
-      }, 400);
+      // Centered at Alair region
+      const defaultPos = { lat: 17.63, lng: 78.96 };
 
-      // Track live GPS location
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 13,
+        center: defaultPos,
+        styles: darkTacticalStyle,
+        disableDefaultUI: true // Removes standard controls to fit small watch displays
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: false,
+        polylineOptions: {
+          strokeColor: "#00ff66",
+          strokeWeight: 4,
+          strokeOpacity: 0.9
+        }
+      });
+
+      // Track Live GPS Position
       if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition((position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
-          myLatLng = [lat, lng];
+          myLatLng = { lat, lng };
+
+          document.getElementById('status-hud').innerText = `GRID: ${lat.toFixed(4)}N, ${lng.toFixed(4)}E`;
 
           socket.emit('location-update', { lat, lng });
-          updateMarker(myId, document.getElementById('username').value + " (You)", lat, lng, true);
-        }, (err) => console.log("Location access error:", err), {
-          enableHighAccuracy: true
-        });
+          updateMarker(myId, document.getElementById('username').value + " (YOU)", lat, lng, true);
+        }, (err) => console.log("GPS Error:", err), { enableHighAccuracy: true });
       }
     }
 
@@ -136,7 +265,7 @@
       const room = document.getElementById('room').value.trim();
       const passcode = document.getElementById('passcode').value.trim();
 
-      if (!username || !room || !passcode) return alert("Fill in all details.");
+      if (!username || !room || !passcode) return alert("ENTER COMPLETE CREDENTIALS");
 
       initAudio().then(() => {
         socket.emit('join-room', { room, username, passcode });
@@ -147,10 +276,11 @@
       myId = id;
       document.getElementById('auth-box').classList.add('hidden');
       document.getElementById('app-box').classList.remove('hidden');
-      document.getElementById('room-display').innerText = `SERVER: ${document.getElementById('room').value.toUpperCase()}`;
       
-      initMap();
+      initGoogleMap();
       updateMemberList(members);
+
+      tacticalVoiceSpeak("Comms linked. Tactical navigation online.");
 
       members.forEach(member => {
         if (member.id !== myId) createPeerConnection(member.id, true);
@@ -158,18 +288,19 @@
     });
 
     socket.on('error-msg', (msg) => alert(msg));
-    socket.on('user-joined', ({ id, username }) => addMemberToList(id, username));
+    socket.on('user-joined', ({ id, username }) => {
+      addMemberToList(id, username);
+      tacticalVoiceSpeak(`Friendly force ${username} entered network.`);
+    });
 
     socket.on('user-left', (id) => {
       removeMemberFromList(id);
       delete friendLocations[id];
       if (mapMarkers[id]) {
-        map.removeLayer(mapMarkers[id]);
+        mapMarkers[id].setMap(null);
         delete mapMarkers[id];
       }
       if (peers[id]) { peers[id].close(); delete peers[id]; }
-      const el = document.getElementById(`audio-${id}`);
-      if (el) el.remove();
     });
 
     socket.on('friend-location', ({ id, username, lat, lng }) => {
@@ -179,64 +310,64 @@
 
     function updateMarker(id, username, lat, lng, isSelf) {
       if (!map) return;
-
-      const popupContent = isSelf 
-        ? `<b>${username}</b>` 
-        : `<b>${username}</b><br/><button class="route-btn" onclick="drawRouteTo('${id}')">Route Here</button>`;
+      const pos = { lat, lng };
 
       if (mapMarkers[id]) {
-        mapMarkers[id].setLatLng([lat, lng]);
-        mapMarkers[id].setPopupContent(popupContent);
+        mapMarkers[id].setPosition(pos);
       } else {
-        mapMarkers[id] = L.marker([lat, lng]).addTo(map).bindPopup(popupContent);
-        if (isSelf) map.setView([lat, lng], 14);
+        mapMarkers[id] = new google.maps.Marker({
+          position: pos,
+          map: map,
+          title: username,
+          icon: isSelf ? "http://maps.google.com/mapfiles/ms/icons/green-dot.png" : "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+        });
+        if (isSelf) map.setCenter(pos);
       }
     }
 
+    // --- GOOGLE DIRECTIONS ROUTE SYSTEM ---
     function drawRouteTo(targetId) {
-      if (!myLatLng) return alert("Waiting for your GPS location...");
+      if (!myLatLng) {
+        tacticalVoiceSpeak("Warning. Current GPS coordinates unverified.");
+        return;
+      }
       const target = friendLocations[targetId];
-      if (!target) return alert("Target location unavailable.");
+      if (!target) return;
 
-      clearCurrentRoute();
+      const request = {
+        origin: myLatLng,
+        destination: { lat: target.lat, lng: target.lng },
+        travelMode: google.maps.TravelMode.DRIVING
+      };
 
-      routingControl = L.Routing.control({
-        waypoints: [
-          L.latLng(myLatLng[0], myLatLng[1]),
-          L.latLng(target.lat, target.lng)
-        ],
-        lineOptions: {
-          styles: [{ color: '#00e676', weight: 5, opacity: 0.8 }]
-        },
-        createMarker: () => null,
-        addWaypoints: false
-      }).addTo(map);
+      directionsService.route(request, (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK) {
+          directionsRenderer.setDirections(result);
+          document.getElementById('clear-btn')?.classList.remove('hidden');
 
-      routingControl.on('routesfound', (e) => {
-        const routes = e.routes;
-        const summary = routes[0].summary;
-        const distanceKm = (summary.totalDistance / 1000).toFixed(1);
-        const timeMin = Math.round(summary.totalTime / 60);
+          const route = result.routes[0].legs[0];
+          const dist = route.distance.text;
+          const duration = route.duration.text;
 
-        document.getElementById('route-info').innerText = `Route to ${target.username}: ${distanceKm} km (~${timeMin} mins)`;
-        document.getElementById('clear-route').classList.remove('hidden');
+          // Soldier Navigation Voice Announcement
+          tacticalVoiceSpeak(`Plotting route to target soldier ${target.username}. Distance: ${dist}. Estimated time of arrival: ${duration}. Move out.`);
+        } else {
+          tacticalVoiceSpeak("Route generation failed. Check terrain or connectivity.");
+        }
       });
     }
 
     function clearCurrentRoute() {
-      if (routingControl) {
-        map.removeControl(routingControl);
-        routingControl = null;
-      }
-      document.getElementById('route-info').innerText = '';
-      document.getElementById('clear-route').classList.add('hidden');
+      directionsRenderer.setDirections({ routes: [] });
+      document.getElementById('clear-btn')?.classList.add('hidden');
+      tacticalVoiceSpeak("Navigation route cleared. Standing by.");
     }
 
     socket.on('user-talk-status', ({ id, isSpeaking }) => {
       const badge = document.getElementById(`status-${id}`);
       if (badge) {
-        badge.innerText = isSpeaking ? "TALKING..." : "IDLE";
-        badge.className = `status-badge ${isSpeaking ? 'speaking' : ''}`;
+        badge.innerText = isSpeaking ? "TRANSMITTING" : "IDLE";
+        badge.style.color = isSpeaking ? "#00ff66" : "#888";
       }
     });
 
@@ -263,7 +394,7 @@
       if (isInitiator) {
         pc.createOffer().then(offer => {
           pc.setLocalDescription(offer);
-          socket.emit('signal', { targetId: senderId, signal: { sdp: offer } });
+          socket.emit('signal', { targetId: targetId, signal: { sdp: offer } });
         });
       }
       return pc;
@@ -310,14 +441,14 @@
       item.className = 'member-item';
       item.id = `member-${id}`;
 
-      const routeBtn = (id !== myId) ? `<button class="route-btn" onclick="drawRouteTo('${id}')">Route</button>` : '';
+      const routeBtn = (id !== myId) ? `<button class="route-btn" onclick="drawRouteTo('${id}')">NAV</button>` : '';
 
       item.innerHTML = `
         <div>
-          <span>${username} ${id === myId ? '<b>(You)</b>' : ''}</span>
+          <span>${username} ${id === myId ? '(YOU)' : ''}</span>
           ${routeBtn}
         </div>
-        <span id="status-${id}" class="status-badge">IDLE</span>
+        <span id="status-${id}">IDLE</span>
       `;
       list.appendChild(item);
     }
@@ -327,5 +458,8 @@
       if (item) item.remove();
     }
   </script>
+
+  <!-- GOOGLE MAPS API WITH DIRECTIONS SERVICE -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=geometry,places"></script>
 </body>
 </html>
