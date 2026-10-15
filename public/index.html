@@ -2,56 +2,457 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Realtime Walkie Talkie - Web App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>REAL_TALK // TACTICAL PTT</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: #fff; margin: 0; padding: 20px; box-sizing: border-box; }
-    #talkBtn { width: 220px; height: 220px; border-radius: 50%; font-size: 20px; font-weight: bold; background: #1e293b; color: #38bdf8; border: 4px solid #38bdf8; cursor: pointer; user-select: none; touch-action: manipulation; transition: all 0.2s ease; box-shadow: 0 0 20px rgba(56, 189, 248, 0.2); }
-    #talkBtn.active { background: #ef4444; color: #fff; border-color: #f87171; box-shadow: 0 0 30px rgba(239, 68, 68, 0.5); }
-    #status { margin-top: 25px; font-size: 16px; color: #94a3b8; font-weight: 500; }
-    .device-box { margin-top: 20px; width: 100%; max-width: 300px; text-align: center; }
-    select { width: 100%; padding: 12px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; font-size: 14px; margin-top: 6px; outline: none; }
-    .audio-player { display: none; }
+    :root {
+      --bg-core: #07090e;
+      --panel-bg: rgba(13, 20, 33, 0.85);
+      --neon-cyan: #00f3ff;
+      --neon-red: #ff2a5f;
+      --neon-green: #00ff66;
+      --text-main: #c0d2e5;
+      --border-glow: rgba(0, 243, 255, 0.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+    body {
+      background-color: var(--bg-core);
+      color: var(--text-main);
+      font-family: 'Courier New', Courier, monospace;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px;
+      background-image: 
+        linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* Top HUD Header */
+    .hud-header {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--border-glow);
+      padding-bottom: 10px;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 10px var(--border-glow);
+    }
+
+    .device-switcher {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mode-btn {
+      background: rgba(0, 243, 255, 0.1);
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      padding: 4px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      border-radius: 4px;
+    }
+
+    .mode-btn.active {
+      background: var(--neon-cyan);
+      color: #000;
+      font-weight: bold;
+    }
+
+    /* Main Console Container */
+    .console-container {
+      width: 100%;
+      max-width: 480px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Input Device Selection */
+    .device-box {
+      width: 100%;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .device-box label {
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: #64748b;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      background: var(--panel-bg);
+      color: var(--neon-cyan);
+      border: 1px solid var(--border-glow);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+    }
+
+    /* Rectangular Morphing PTT Button / Visualizer */
+    #talkBtn {
+      width: 100%;
+      height: 140px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9));
+      border: 3px solid var(--border-glow);
+      border-radius: 12px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 25px rgba(0, 243, 255, 0.15);
+      transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
+    }
+
+    #talkBtn.transmitting {
+      border-color: var(--neon-red);
+      background: linear-gradient(135deg, rgba(40, 10, 20, 0.9), rgba(60, 15, 30, 0.9));
+      box-shadow: 0 0 35px rgba(255, 42, 95, 0.4);
+    }
+
+    .btn-label {
+      font-size: 16px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: var(--neon-cyan);
+      z-index: 2;
+      transition: opacity 0.2s;
+    }
+
+    #talkBtn.transmitting .btn-label {
+      color: var(--neon-red);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    /* Real-time Canvas Visualizer */
+    #visCanvas {
+      position: absolute;
+      width: 90%;
+      height: 60px;
+      bottom: 15px;
+      display: none;
+      z-index: 2;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      color: #94a3b8;
+    }
+
+    /* Swipe-Up Drawer Button */
+    .drawer-trigger {
+      width: 100%;
+      max-width: 480px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-glow);
+      padding: 12px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      margin-top: 15px;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+    }
+
+    .drawer-trigger span {
+      font-size: 12px;
+      letter-spacing: 1px;
+      color: var(--neon-cyan);
+      font-weight: bold;
+    }
+
+    /* Tactical Swipe-Up Map Drawer */
+    #mapDrawer {
+      position: fixed;
+      bottom: -100%;
+      left: 0;
+      width: 100%;
+      height: 75vh;
+      background: rgba(7, 9, 14, 0.95);
+      border-top: 2px solid var(--neon-cyan);
+      backdrop-filter: blur(10px);
+      transition: bottom 0.4s cubic-bezier(0.1, 0.9, 0.2, 1);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    #mapDrawer.open {
+      bottom: 0;
+    }
+
+    .drawer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .close-drawer {
+      background: none;
+      border: 1px solid var(--neon-red);
+      color: var(--neon-red);
+      padding: 4px 10px;
+      cursor: pointer;
+      font-family: inherit;
+      border-radius: 4px;
+    }
+
+    .radar-grid {
+      flex: 1;
+      border: 1px solid var(--border-glow);
+      background: radial-gradient(circle, rgba(0,243,255,0.05) 0%, rgba(7,9,14,0.9) 80%);
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .radar-blip {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--neon-green);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--neon-green);
+      transform: translate(-50%, -50%);
+    }
+
+    .radar-blip::after {
+      content: attr(data-name);
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    /* Weapon-Switch Style Target Selector Overlay */
+    #targetWheel {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      backdrop-filter: blur(5px);
+    }
+
+    .wheel-ring {
+      width: 260px;
+      height: 260px;
+      border: 2px dashed var(--neon-cyan);
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .wheel-node {
+      position: absolute;
+      padding: 6px 12px;
+      background: rgba(13, 20, 33, 0.9);
+      border: 1px solid var(--border-glow);
+      color: #fff;
+      font-size: 11px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .wheel-node.selected {
+      background: var(--neon-cyan);
+      color: #000;
+      border-color: #fff;
+      font-weight: bold;
+    }
+
+    /* Inertial Pointer Dot */
+    #pointerDot {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: var(--neon-red);
+      border: 2px solid #fff;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px var(--neon-red);
+      z-index: 250;
+      display: none;
+    }
+
+    /* Android Watch Compact Layout Mode */
+    body.watch-mode {
+      justify-content: center;
+      background: #000;
+    }
+    body.watch-mode .console-container {
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      border: 4px solid var(--neon-cyan);
+      background: #07090e;
+      padding: 20px;
+      justify-content: center;
+      box-shadow: 0 0 30px rgba(0, 243, 255, 0.3) inset;
+    }
+    body.watch-mode .hud-header,
+    body.watch-mode .device-box,
+    body.watch-mode .drawer-trigger {
+      display: none;
+    }
+    body.watch-mode #talkBtn {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+    }
+    body.watch-mode #status {
+      font-size: 9px;
+    }
   </style>
 </head>
 <body>
-  <h1>Web Walkie Talkie</h1>
-  
-  <button id="talkBtn">TAP TO TALK</button>
 
-  <div class="device-box">
-    <label for="micSelect" style="font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Input Device</label>
-    <select id="micSelect"></select>
+  <!-- HUD Header -->
+  <div class="hud-header">
+    <div class="logo">REAL_TALK</div>
+    <div class="device-switcher">
+      <button class="mode-btn active" onclick="setMode('mobile')">MOBILE</button>
+      <button class="mode-btn" onclick="setMode('watch')">WATCH</button>
+    </div>
   </div>
 
-  <div id="status">Connecting...</div>
-  <audio id="dummyAudio" class="audio-player" loop src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
+  <!-- Main Console -->
+  <div class="console-container">
+    <div class="device-box">
+      <label>AUDIO INPUT (BLUETOOTH / MIC)</label>
+      <select id="micSelect"></select>
+    </div>
+
+    <!-- Morphing PTT Button & Visualizer -->
+    <button id="talkBtn">
+      <span class="btn-label" id="btnText">TAP TO TALK</span>
+      <canvas id="visCanvas"></canvas>
+    </button>
+
+    <div id="status">CONNECTING TO RELAY...</div>
+  </div>
+
+  <!-- Drawer Trigger for Radar Map & Target Selector -->
+  <div class="drawer-trigger" onclick="toggleDrawer(true)">
+    <span>▲ SWIPE UP FOR TARGET LOCATE</span>
+    <span style="font-size: 16px;">🎯</span>
+  </div>
+
+  <!-- Swipe-Up Radar Map Drawer -->
+  <div id="mapDrawer">
+    <div class="drawer-header">
+      <h3 style="color: var(--neon-cyan); font-size: 14px;">TACTICAL RADAR & TARGETING</h3>
+      <button class="close-drawer" onclick="toggleDrawer(false)">CLOSE [X]</button>
+    </div>
+    <div style="margin-bottom: 10px;">
+      <button class="mode-btn" onclick="openTargetWheel()" style="width: 100%; padding: 10px; font-size: 12px;">OPEN TARGET SELECTOR</button>
+    </div>
+    <div class="radar-grid" id="radarGrid">
+      <div class="radar-blip" style="top: 50%; left: 50%; background: var(--neon-cyan);" data-name="YOU"></div>
+    </div>
+  </div>
+
+  <!-- Gaming Weapon-Wheel Target Selector -->
+  <div id="targetWheel" onmousemove="updateWheelPointer(event)" ontouchmove="updateWheelPointer(event)">
+    <div class="wheel-ring" id="wheelRing">
+      <!-- Nodes populated dynamically -->
+    </div>
+  </div>
+  <div id="pointerDot"></div>
+
+  <audio id="dummyAudio" style="display:none;" loop src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="></audio>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
     const talkBtn = document.getElementById('talkBtn');
+    const btnText = document.getElementById('btnText');
     const statusDiv = document.getElementById('status');
     const micSelect = document.getElementById('micSelect');
+    const visCanvas = document.getElementById('visCanvas');
+    const canvasCtx = visCanvas.getContext('2d');
     const dummyAudio = document.getElementById('dummyAudio');
 
-    let mediaRecorder;
     let audioStream;
+    let mediaRecorder;
+    let audioContext;
+    let analyser;
+    let animationId;
     let isTransmitting = false;
 
-    socket.on('connect', () => { statusDiv.innerText = 'Connected - Ready'; });
-    socket.on('disconnect', () => { statusDiv.innerText = 'Disconnected'; });
+    // Simulated peer locations for radar
+    const peers = {};
 
-    // Incoming audio playback
-    socket.on('audio-stream', (audioChunk) => {
-      const blob = new Blob([audioChunk], { type: 'audio/webm' });
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = new Audio(audioUrl);
-      audio.play().catch(e => console.log('Autoplay blocked:', e));
+    socket.on('connect', () => {
+      statusDiv.innerText = 'STATUS: SECURE // READY';
     });
 
-    // Fetch and auto-select Bluetooth devices
-    async function loadAudioDevices() {
+    socket.on('disconnect', () => {
+      statusDiv.innerText = 'STATUS: DISCONNECTED';
+    });
+
+    // Handle Incoming Audio Broadcasts
+    socket.on('audio-stream', ({ id, audio }) => {
+      const blob = new Blob([audio], { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      const sound = new Audio(url);
+      sound.play().catch(e => console.log('Audio playback prevented:', e));
+    });
+
+    // Handle Telemetry Data
+    socket.on('telemetry', ({ id, name, x, y }) => {
+      peers[id] = { name, x, y };
+      updateRadarMap();
+    });
+
+    // Enumerate Microphones & Detect Bluetooth Headsets
+    async function initAudioDevices() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         audioStream = stream;
@@ -61,27 +462,26 @@
 
         micSelect.innerHTML = '';
         inputs.forEach((device, index) => {
-          const option = document.createElement('option');
-          option.value = device.deviceId;
-          option.text = device.label || `Microphone ${index + 1}`;
-          
-          if (device.label.toLowerCase().includes('bluetooth') || device.label.toLowerCase().includes('hands-free')) {
-            option.selected = true;
+          const opt = document.createElement('option');
+          opt.value = device.deviceId;
+          opt.text = device.label || `Microphone ${index + 1}`;
+          if (opt.text.toLowerCase().includes('bluetooth') || opt.text.toLowerCase().includes('hands-free')) {
+            opt.selected = true;
           }
-          micSelect.appendChild(option);
+          micSelect.appendChild(opt);
         });
 
         if (micSelect.value) {
           switchMicrophone(micSelect.value);
         }
       } catch (err) {
-        statusDiv.innerText = 'Microphone access denied!';
+        statusDiv.innerText = 'ERROR: MIC PERMISSION DENIED';
       }
     }
 
     async function switchMicrophone(deviceId) {
       if (audioStream) {
-        audioStream.getTracks().forEach(track => track.stop());
+        audioStream.getTracks().forEach(t => t.stop());
       }
       audioStream = await navigator.mediaDevices.getUserMedia({
         audio: { deviceId: { exact: deviceId } }
@@ -90,25 +490,53 @@
 
     micSelect.addEventListener('change', () => switchMicrophone(micSelect.value));
 
-    function toggleTalk() {
-      if (!isTransmitting) {
-        startTransmitting();
-      } else {
-        stopTransmitting();
+    // Web Audio API Visualizer Setup
+    function setupVisualizer(stream) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+
+      visCanvas.style.display = 'block';
+      drawVisualizer();
+    }
+
+    function drawVisualizer() {
+      animationId = requestAnimationFrame(drawVisualizer);
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      analyser.getByteFrequencyData(dataArray);
+
+      visCanvas.width = visCanvas.offsetWidth;
+      visCanvas.height = visCanvas.offsetHeight;
+      canvasCtx.clearRect(0, 0, visCanvas.width, visCanvas.height);
+
+      const barWidth = (visCanvas.width / bufferLength) * 2.5;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * visCanvas.height;
+        canvasCtx.fillStyle = '#00ff66';
+        canvasCtx.fillRect(x, visCanvas.height - barHeight, barWidth - 2, barHeight);
+        x += barWidth + 2;
       }
     }
 
+    // Transmission Controls
     function startTransmitting() {
       if (!audioStream) return;
       isTransmitting = true;
-      talkBtn.classList.add('active');
-      talkBtn.innerText = 'TRANSMITTING';
-      statusDiv.innerText = 'Transmitting live...';
+      talkBtn.classList.add('transmitting');
+      btnText.innerText = 'TRANSMITTING...';
+      statusDiv.innerText = 'STATUS: LIVE BROADCAST';
+
+      setupVisualizer(audioStream);
 
       mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0 && socket.connected) {
-          socket.emit('audio-stream', event.data);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0 && socket.connected) {
+          socket.emit('audio-stream', e.data);
         }
       };
       mediaRecorder.start(200);
@@ -117,28 +545,128 @@
     function stopTransmitting() {
       if (!isTransmitting) return;
       isTransmitting = false;
+      talkBtn.classList.remove('transmitting');
+      btnText.innerText = 'TAP TO TALK';
+      statusDiv.innerText = 'STATUS: SECURE // READY';
+
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
       }
-      talkBtn.classList.remove('active');
-      talkBtn.innerText = 'TAP TO TALK';
-      statusDiv.innerText = 'Connected - Ready';
+      if (animationId) cancelAnimationFrame(animationId);
+      visCanvas.style.display = 'none';
+      if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close();
+      }
     }
 
     talkBtn.addEventListener('click', () => {
       dummyAudio.play().catch(() => {});
-      toggleTalk();
+      if (!isTransmitting) startTransmitting();
+      else stopTransmitting();
     });
 
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.setActionHandler('play', () => startTransmitting());
-      navigator.mediaSession.setActionHandler('pause', () => stopTransmitting());
-      navigator.mediaSession.setActionHandler('previoustrack', () => toggleTalk());
-      navigator.mediaSession.setActionHandler('nexttrack', () => toggleTalk());
+    // Layout Switcher (Mobile vs Watch)
+    function setMode(mode) {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      if (mode === 'watch') {
+        document.body.classList.add('watch-mode');
+        event.target.classList.add('active');
+      } else {
+        document.body.classList.remove('watch-mode');
+        event.target.classList.add('active');
+      }
     }
 
-    navigator.mediaDevices.addEventListener('devicechange', loadAudioDevices);
-    loadAudioDevices();
+    // Drawer Controls
+    function toggleDrawer(open) {
+      const drawer = document.getElementById('mapDrawer');
+      if (open) drawer.classList.add('open');
+      else drawer.classList.remove('open');
+    }
+
+    function updateRadarMap() {
+      const grid = document.getElementById('radarGrid');
+      grid.innerHTML = '<div class="radar-blip" style="top: 50%; left: 50%; background: var(--neon-cyan);" data-name="YOU"></div>';
+      
+      Object.keys(peers).forEach(id => {
+        const p = peers[id];
+        const blip = document.createElement('div');
+        blip.className = 'radar-blip';
+        blip.style.top = `${p.y}%`;
+        blip.style.left = `${p.x}%`;
+        blip.setAttribute('data-name', p.name);
+        grid.appendChild(blip);
+      });
+    }
+
+    // Gaming Weapon-Wheel Target Selector with Inertia Delay
+    const targetNames = ["ALPHA", "BRAVO", "COMMAND", "RECON", "SUPPORT", "MEDIC"];
+    let pointerX = window.innerWidth / 2;
+    let pointerY = window.innerHeight / 2;
+    let targetX = pointerX;
+    let targetY = pointerY;
+
+    function openTargetWheel() {
+      const wheel = document.getElementById('targetWheel');
+      const ring = document.getElementById('wheelRing');
+      const dot = document.getElementById('pointerDot');
+      
+      wheel.style.display = 'flex';
+      dot.style.display = 'block';
+      ring.innerHTML = '';
+
+      targetNames.forEach((name, idx) => {
+        const angle = (idx / targetNames.length) * Math.PI * 2;
+        const radius = 90;
+        const x = Math.cos(angle) * radius + 115;
+        const y = Math.sin(angle) * radius + 115;
+
+        const node = document.createElement('div');
+        node.className = 'wheel-node';
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        node.innerText = name;
+        node.onclick = () => {
+          alert(`Locked onto target: ${name}`);
+          closeTargetWheel();
+        };
+        ring.appendChild(node);
+      });
+    }
+
+    function closeTargetWheel() {
+      document.getElementById('targetWheel').style.display = 'none';
+      document.getElementById('pointerDot').style.display = 'none';
+    }
+
+    function updateWheelPointer(e) {
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      targetX = clientX;
+      targetY = clientY;
+    }
+
+    // Inertial lerp loop for smooth weapon-wheel pointer lag
+    function animatePointer() {
+      pointerX += (targetX - pointerX) * 0.15;
+      pointerY += (targetY - pointerY) * 0.15;
+      const dot = document.getElementById('pointerDot');
+      dot.style.left = `${pointerX}px`;
+      dot.style.top = `${pointerY}px`;
+      requestAnimationFrame(animatePointer);
+    }
+    animatePointer();
+
+    // Broadcast dummy location telemetry periodically
+    setInterval(() => {
+      socket.emit('telemetry', {
+        name: 'OPERATOR',
+        x: Math.floor(Math.random() * 60) + 20,
+        y: Math.floor(Math.random() * 60) + 20
+      });
+    }, 5000);
+
+    initAudioDevices();
   </script>
 </body>
 </html>
