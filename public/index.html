@@ -276,15 +276,31 @@
       backdrop-filter: blur(5px);
     }
 
+    /* Simple Circular 75% Translucent Blue Glow with Red Divider Lines */
     .wheel-ring {
-      width: 260px;
-      height: 260px;
-      border: 2px dashed var(--neon-cyan);
+      width: 300px;
+      height: 300px;
+      background: rgba(0, 243, 255, 0.25); /* 75% transparent blue glow */
+      border: 2px solid var(--neon-cyan);
       border-radius: 50%;
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 0 40px rgba(0, 243, 255, 0.4);
+    }
+
+    /* Red partition line styling generated automatically */
+    .wheel-divider {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 50%;
+      height: 2px;
+      background: var(--neon-red);
+      transform-origin: left center;
+      box-shadow: 0 0 8px var(--neon-red);
+      pointer-events: none;
     }
 
     .wheel-node {
@@ -296,7 +312,9 @@
       font-size: 11px;
       border-radius: 4px;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+      z-index: 5;
+      transform: translate(-50%, -50%);
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
     }
 
     .wheel-node.selected {
@@ -401,7 +419,7 @@
   <!-- Gaming Weapon-Wheel Target Selector -->
   <div id="targetWheel" onmousemove="updateWheelPointer(event)" ontouchmove="updateWheelPointer(event)">
     <div class="wheel-ring" id="wheelRing">
-      <!-- Nodes populated dynamically -->
+      <!-- Partitions and nodes populated dynamically -->
     </div>
   </div>
   <div id="pointerDot"></div>
@@ -426,7 +444,6 @@
     let animationId;
     let isTransmitting = false;
 
-    // Simulated peer locations for radar
     const peers = {};
 
     socket.on('connect', () => {
@@ -437,7 +454,6 @@
       statusDiv.innerText = 'STATUS: DISCONNECTED';
     });
 
-    // Handle Incoming Audio Broadcasts
     socket.on('audio-stream', ({ id, audio }) => {
       const blob = new Blob([audio], { type: 'audio/webm' });
       const url = URL.createObjectURL(blob);
@@ -445,13 +461,11 @@
       sound.play().catch(e => console.log('Audio playback prevented:', e));
     });
 
-    // Handle Telemetry Data
     socket.on('telemetry', ({ id, name, x, y }) => {
       peers[id] = { name, x, y };
       updateRadarMap();
     });
 
-    // Enumerate Microphones & Detect Bluetooth Headsets
     async function initAudioDevices() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -490,7 +504,6 @@
 
     micSelect.addEventListener('change', () => switchMicrophone(micSelect.value));
 
-    // Web Audio API Visualizer Setup
     function setupVisualizer(stream) {
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioContext.createMediaStreamSource(stream);
@@ -523,7 +536,6 @@
       }
     }
 
-    // Transmission Controls
     function startTransmitting() {
       if (!audioStream) return;
       isTransmitting = true;
@@ -565,7 +577,6 @@
       else stopTransmitting();
     });
 
-    // Layout Switcher (Mobile vs Watch)
     function setMode(mode) {
       document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
       if (mode === 'watch') {
@@ -577,7 +588,6 @@
       }
     }
 
-    // Drawer Controls
     function toggleDrawer(open) {
       const drawer = document.getElementById('mapDrawer');
       if (open) drawer.classList.add('open');
@@ -599,7 +609,7 @@
       });
     }
 
-    // Gaming Weapon-Wheel Target Selector with Inertia Delay
+    // Weapon-Wheel Target Selector with Automatic Red Partition Lines
     const targetNames = ["ALPHA", "BRAVO", "COMMAND", "RECON", "SUPPORT", "MEDIC"];
     let pointerX = window.innerWidth / 2;
     let pointerY = window.innerHeight / 2;
@@ -615,11 +625,22 @@
       dot.style.display = 'block';
       ring.innerHTML = '';
 
+      const total = targetNames.length;
+      const radius = 100; // Distance of text labels from center
+
       targetNames.forEach((name, idx) => {
-        const angle = (idx / targetNames.length) * Math.PI * 2;
-        const radius = 90;
-        const x = Math.cos(angle) * radius + 115;
-        const y = Math.sin(angle) * radius + 115;
+        const angle = (idx / total) * Math.PI * 2;
+
+        // 1. Create automatic red partition dividing line
+        const divider = document.createElement('div');
+        divider.className = 'wheel-divider';
+        divider.style.transform = `rotate(${angle * (180 / Math.PI)}deg)`;
+        ring.appendChild(divider);
+
+        // 2. Position target node label neatly in the middle of each partition slice
+        const nodeAngle = angle + (Math.PI / total);
+        const x = Math.cos(nodeAngle) * (radius * 0.7) + 150;
+        const y = Math.sin(nodeAngle) * (radius * 0.7) + 150;
 
         const node = document.createElement('div');
         node.className = 'wheel-node';
@@ -646,7 +667,6 @@
       targetY = clientY;
     }
 
-    // Inertial lerp loop for smooth weapon-wheel pointer lag
     function animatePointer() {
       pointerX += (targetX - pointerX) * 0.15;
       pointerY += (targetY - pointerY) * 0.15;
@@ -657,7 +677,6 @@
     }
     animatePointer();
 
-    // Broadcast dummy location telemetry periodically
     setInterval(() => {
       socket.emit('telemetry', {
         name: 'OPERATOR',
