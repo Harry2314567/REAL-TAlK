@@ -9,29 +9,37 @@ const io = new Server(server, {
   cors: { origin: '*' } 
 });
 
-// Serve static files from 'public' folder
+// Serve static assets from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Relay live audio and peer telemetry
+// Store active operators and telemetry
+const operators = {};
+
 io.on('connection', (socket) => {
   console.log(`[OPERATOR CONNECTED]: ${socket.id}`);
 
-  // Broadcast audio chunk to other operators
+  // Voice stream broadcast
   socket.on('audio-stream', (data) => {
-    socket.broadcast.emit('audio-stream', { id: socket.id, audio: data });
+    socket.broadcast.emit('audio-stream', {
+      sender: socket.id,
+      buffer: data
+    });
   });
 
-  // Broadcast tactical GPS telemetry coordinates
+  // GPS Telemetry updates
   socket.on('telemetry', (data) => {
-    socket.broadcast.emit('telemetry', { id: socket.id, ...data });
+    operators[socket.id] = { id: socket.id, ...data };
+    io.emit('telemetry-update', operators);
   });
 
   socket.on('disconnect', () => {
     console.log(`[OPERATOR DISCONNECTED]: ${socket.id}`);
+    delete operators[socket.id];
+    io.emit('telemetry-update', operators);
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`REAL_TALK command server active on port ${PORT}`);
+  console.log(`REAL_TALK server operating on port ${PORT}`);
 });
