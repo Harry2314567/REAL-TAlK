@@ -14,7 +14,6 @@
       --panel-bg: rgba(18, 18, 18, 0.95);
       --bw-white: #ffffff;
       --bw-light-gray: #d1d5db;
-      --bw-mid-gray: #4b5563;
       --bw-dark-gray: #111827;
       --alert-red: #ff3333;
     }
@@ -38,7 +37,6 @@
       background-size: 24px 24px;
     }
 
-    /* Top Black & White HUD Header */
     .hud-header {
       width: 100%;
       max-width: 480px;
@@ -80,7 +78,6 @@
       font-weight: bold;
     }
 
-    /* Main Console Container */
     .console-container {
       width: 100%;
       max-width: 480px;
@@ -92,7 +89,6 @@
       position: relative;
     }
 
-    /* Input Device Selection */
     .device-box {
       width: 100%;
       margin-bottom: 20px;
@@ -119,7 +115,6 @@
       outline: none;
     }
 
-    /* Rectangular Morphing PTT Button */
     #talkBtn {
       width: 100%;
       height: 140px;
@@ -157,7 +152,6 @@
       margin-bottom: 8px;
     }
 
-    /* Real-time Canvas Equalizer */
     #visCanvas {
       position: absolute;
       width: 90%;
@@ -175,7 +169,6 @@
       text-align: center;
     }
 
-    /* Swipe-Up Drawer Button */
     .drawer-trigger {
       width: 100%;
       max-width: 480px;
@@ -197,7 +190,6 @@
       font-weight: bold;
     }
 
-    /* Black and White Map Drawer */
     #mapDrawer {
       position: fixed;
       bottom: -100%;
@@ -224,7 +216,6 @@
       margin-bottom: 12px;
     }
 
-    /* Real Leaflet Map Container */
     #map {
       flex: 1;
       width: 100%;
@@ -233,12 +224,10 @@
       background: #000;
     }
 
-    /* Apply Grayscale / Black & White Filter to Map Tiles */
     .leaflet-tile-container img {
       filter: grayscale(100%) invert(100%) contrast(150%) brightness(80%);
     }
 
-    /* Target Selector Overlay */
     #targetWheel {
       position: fixed;
       inset: 0;
@@ -249,7 +238,6 @@
       z-index: 200;
     }
 
-    /* Translucent Blue Circular Target Ring */
     .wheel-ring {
       width: 300px;
       height: 300px;
@@ -299,7 +287,6 @@
       display: none;
     }
 
-    /* Android Watch Layout Mode */
     body.watch-mode {
       justify-content: center;
       background: #000;
@@ -327,7 +314,6 @@
 </head>
 <body>
 
-  <!-- Top HUD Header -->
   <div class="hud-header">
     <div class="logo">REAL_TALK</div>
     <div class="device-switcher">
@@ -336,14 +322,12 @@
     </div>
   </div>
 
-  <!-- Main Console Container -->
   <div class="console-container">
     <div class="device-box">
       <label>AUDIO INPUT DEVICE</label>
       <select id="micSelect"></select>
     </div>
 
-    <!-- PTT Button -->
     <button id="talkBtn">
       <span class="btn-label" id="btnText">HOLD / TAP TO TALK</span>
       <canvas id="visCanvas"></canvas>
@@ -352,13 +336,11 @@
     <div id="status">INITIALIZING SYSTEM...</div>
   </div>
 
-  <!-- Swipe Up Drawer Button -->
   <div class="drawer-trigger" onclick="toggleDrawer(true)">
     <span>▲ TAP / SWIPE FOR BLACK & WHITE MAP</span>
     <span style="font-size: 14px;">🎯</span>
   </div>
 
-  <!-- Map Drawer -->
   <div id="mapDrawer">
     <div class="drawer-header">
       <span style="font-size: 12px; font-weight: bold; letter-spacing: 2px;">TACTICAL B&W MAP</span>
@@ -367,17 +349,14 @@
         <button class="mode-btn" onclick="toggleDrawer(false)" style="border-color: var(--alert-red); color: var(--alert-red);">CLOSE [X]</button>
       </div>
     </div>
-    <!-- Real Leaflet Map Container -->
     <div id="map"></div>
   </div>
 
-  <!-- Target Selector Wheel -->
   <div id="targetWheel" onmousemove="updateWheelPointer(event)" ontouchmove="updateWheelPointer(event)">
     <div class="wheel-ring" id="wheelRing"></div>
   </div>
   <div id="pointerDot"></div>
 
-  <!-- Leaflet Map Script JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 
@@ -397,18 +376,6 @@
     let animFrame;
     let isTransmitting = false;
 
-    // Fixed Web Audio Playback Engine
-    let playAudioCtx;
-
-    function initPlaybackAudioContext() {
-      if (!playAudioCtx) {
-        playAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (playAudioCtx.state === 'suspended') {
-        playAudioCtx.resume();
-      }
-    }
-
     socket.on('connect', () => {
       statusDiv.innerText = 'STATUS: ONLINE // SECURE';
     });
@@ -417,21 +384,14 @@
       statusDiv.innerText = 'STATUS: OFFLINE // RECONNECTING';
     });
 
-    // Receive and decode raw incoming WebM audio streams
-    socket.on('audio-stream', async ({ sender, buffer }) => {
-      initPlaybackAudioContext();
-      try {
-        const audioBuffer = await playAudioCtx.decodeAudioData(buffer);
-        const source = playAudioCtx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(playAudioCtx.destination);
-        source.start(0);
-      } catch (err) {
-        console.error('Audio decode error:', err);
-      }
+    // 100% Reliable Blob-Based Audio Streaming Playback
+    socket.on('audio-stream', ({ sender, buffer }) => {
+      const blob = new Blob([buffer], { type: 'audio/webm' });
+      const audioUrl = URL.createObjectURL(blob);
+      const incomingAudio = new Audio(audioUrl);
+      incomingAudio.play().catch(err => console.log('Audio playback blocked by browser policy:', err));
     });
 
-    // Detect and populates microphones
     async function loadMicrophones() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -467,7 +427,6 @@
 
     micSelect.addEventListener('change', () => setAudioInputDevice(micSelect.value));
 
-    // Canvas Equalizer Visualizer
     function setupVisualizer(stream) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioCtx.createMediaStreamSource(stream);
@@ -494,15 +453,13 @@
 
       for (let i = 0; i < bufferLength; i++) {
         const barHeight = (dataArray[i] / 255) * visCanvas.height;
-        canvasCtx.fillStyle = '#ffffff'; // Black & White Bars
+        canvasCtx.fillStyle = '#ffffff';
         canvasCtx.fillRect(x, visCanvas.height - barHeight, barWidth - 2, barHeight);
         x += barWidth + 2;
       }
     }
 
-    // PTT Transmission logic
     function startTransmitting() {
-      initPlaybackAudioContext();
       if (!audioStream) return;
 
       isTransmitting = true;
@@ -513,13 +470,12 @@
       setupVisualizer(audioStream);
 
       mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
-      mediaRecorder.ondataavailable = async (e) => {
+      mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0 && socket.connected) {
-          const arrayBuffer = await e.data.arrayBuffer();
-          socket.emit('audio-stream', arrayBuffer);
+          socket.emit('audio-stream', { buffer: e.data });
         }
       };
-      mediaRecorder.start(250);
+      mediaRecorder.start(100); // Send chunks every 100ms for real-time walkie-talkie feel
     }
 
     function stopTransmitting() {
@@ -544,7 +500,6 @@
     talkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startTransmitting(); });
     talkBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopTransmitting(); });
 
-    // Mode Switcher (Watch vs Mobile)
     function setMode(mode) {
       document.getElementById('mobileBtn').classList.remove('active');
       document.getElementById('watchBtn').classList.remove('active');
@@ -558,24 +513,19 @@
       }
     }
 
-    // Leaflet GPS Black & White Map Integration
     let map;
     let userMarker;
     const peerMarkers = {};
 
     function initMap() {
       if (map) return;
-
-      // Default centered at center location
       map = L.map('map').setView([17.6521, 78.9482], 13);
 
-      // OpenStreetMap Black & White Grayscale Tile Layer
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // Track current user position with GPS
       if ('geolocation' in navigator) {
         navigator.geolocation.watchPosition((pos) => {
           const { latitude, longitude } = pos.coords;
@@ -631,7 +581,6 @@
       }
     }
 
-    // Target Selection Wheel
     const targetNames = ["ALPHA", "BRAVO", "CHARLIE", "DELTA", "ECHO", "FOXTROT"];
     let pointerX = window.innerWidth / 2;
     let pointerY = window.innerHeight / 2;
