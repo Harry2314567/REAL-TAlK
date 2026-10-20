@@ -3,594 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>R34L_T4LK // Tactical Cycling & Party Sync Comms</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <title>WALKIE TALKIE</title>
     <style>
-        :root {
-            --bg-dark: #05070a;
-            --panel-bg: rgba(13, 17, 23, 0.92);
-            --cyan-glow: #00f0ff;
-            --cyan-dim: rgba(0, 240, 255, 0.15);
-            --orange-alert: #ff2a5f;
-            --orange-dim: rgba(255, 42, 95, 0.15);
-            --green-active: #00ff66;
-            --purple-party: #b000ff;
-            --text-main: #e6f1ff;
-            --text-muted: #5a7590;
-            --border-glow: rgba(0, 240, 255, 0.3);
-            --font-head: 'Orbitron', sans-serif;
-            --font-sub: 'Rajdhani', sans-serif;
-            --font-mono: 'Share Tech Mono', monospace;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
         }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
 
         body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: var(--font-sub);
-            min-height: 100vh;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-            position: relative;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px 20px;
         }
 
-        body::before {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            z-index: 10;
-            background-size: 100% 3px, 3px 100%;
-            pointer-events: none;
+        .header {
+            text-align: center;
+            margin-top: 10px;
         }
 
-        #bootScreen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-dark);
-            z-index: 9999;
+        .header h1 {
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            color: #00ffcc;
+        }
+
+        .status {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .status.online {
+            color: #00ff66;
+        }
+
+        /* Large Touch Button */
+        .ptt-button {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: #1e1e1e;
+            border: 4px solid #00ffcc;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 20px;
-            transition: opacity 0.8s ease, visibility 0.8s;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .boot-title {
-            font-family: var(--font-head);
-            font-size: 2.6rem;
-            font-weight: 900;
-            color: var(--cyan-glow);
-            text-shadow: 0 0 15px var(--cyan-glow);
-            letter-spacing: 4px;
-            margin-bottom: 5px;
+        .ptt-button:active, .ptt-button.active {
+            background: #2a1111;
+            border-color: #ff3366;
+            box-shadow: 0 0 35px rgba(255, 51, 102, 0.5);
+            transform: scale(0.95);
         }
 
-        .boot-subtitle {
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            letter-spacing: 3px;
-            margin-bottom: 35px;
+        .ptt-button.receiving {
+            border-color: #00ff66;
+            box-shadow: 0 0 30px rgba(0, 255, 102, 0.4);
         }
 
-        .boot-loader-bar {
-            width: 260px; height: 4px;
-            background: rgba(255,255,255,0.1);
-            position: relative; overflow: hidden;
-            border-radius: 2px; border: 1px solid var(--border-glow);
+        .mic-icon {
+            font-size: 3rem;
+            margin-bottom: 8px;
         }
 
-        .boot-loader-fill {
-            position: absolute; top: 0; left: 0; height: 100%; width: 0%;
-            background: var(--cyan-glow); box-shadow: 0 0 10px var(--cyan-glow);
-            transition: width 0.1s linear;
+        .btn-label {
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 1px;
         }
 
-        .boot-log {
-            font-family: var(--font-mono); font-size: 0.75rem; color: var(--cyan-glow); margin-top: 15px; height: 20px;
+        .footer-info {
+            font-size: 0.75rem;
+            color: #555;
+            text-align: center;
         }
 
-        .compass-bar {
-            background: var(--panel-bg);
-            border-bottom: 1px solid var(--border-glow);
-            height: 46px;
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 12px; position: relative; z-index: 20; backdrop-filter: blur(10px);
+        /* Initial Tap Overlay for Browser Audio Permission */
+        #startModal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #121212;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
         }
 
-        .compass-brand { font-family: var(--font-head); font-size: 0.95rem; font-weight: 900; letter-spacing: 1px; }
-        .compass-brand span { color: var(--cyan-glow); }
-
-        .compass-tape-container {
-            flex-grow: 1; max-width: 200px; height: 26px;
-            background: rgba(0,0,0,0.5); border: 1px solid var(--border-glow);
-            border-radius: 4px; position: relative; overflow: hidden; margin: 0 8px;
-        }
-
-        .compass-tape {
-            position: absolute; top: 0; left: 0; height: 100%;
-            display: flex; align-items: center; font-family: var(--font-mono);
-            font-size: 0.7rem; color: var(--cyan-glow); letter-spacing: 10px; white-space: nowrap;
-            transition: transform 0.1s linear;
-        }
-
-        .compass-needle-indicator {
-            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-            width: 2px; height: 100%; background: var(--orange-alert); box-shadow: 0 0 6px var(--orange-alert);
-        }
-
-        .net-mode-badge {
-            font-family: var(--font-mono); font-size: 0.6rem; padding: 3px 5px;
-            border-radius: 4px; border: 1px solid var(--green-active); color: var(--green-active);
-            background: rgba(0,255,102,0.05);
-        }
-
-        .app-container {
-            display: flex; flex-direction: column;
-            height: calc(100vh - 46px); width: 100%; max-width: 480px; margin: 0 auto;
-            position: relative; z-index: 1; padding: 10px; justify-content: space-between;
-        }
-
-        .telemetry-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-        .tele-card { background: var(--panel-bg); border: 1px solid var(--border-glow); border-radius: 6px; padding: 6px; text-align: center; }
-        .tele-val { font-family: var(--font-head); font-size: 1rem; font-weight: 700; color: var(--cyan-glow); }
-        .tele-lbl { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
-
-        .viewport {
-            background: var(--panel-bg); border: 1px solid var(--border-glow); border-radius: 10px;
-            padding: 12px; margin: 6px 0; display: flex; flex-direction: column; align-items: center;
-            flex-grow: 1; justify-content: space-between; backdrop-filter: blur(10px); position: relative; overflow: hidden;
-        }
-
-        .nav-hud-box { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border-glow); border-radius: 8px; padding: 8px; text-align: center; }
-        .nav-direction-arrow { font-size: 1.8rem; color: var(--cyan-glow); text-shadow: 0 0 10px var(--cyan-glow); }
-        .nav-target-name { font-family: var(--font-head); font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; }
-        .nav-distance { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
-
-        canvas#audioVisualizer { width: 100%; height: 50px; margin: 4px 0; border-bottom: 1px solid var(--border-glow); }
-        .signal-status-bar { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
-
-        .ptt-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 6px; }
-        .ptt-button {
-            width: 145px; height: 145px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(13,17,23,1) 0%, rgba(5,7,10,1) 100%);
-            border: 3px solid var(--cyan-glow); box-shadow: 0 0 20px var(--cyan-dim), inset 0 0 12px var(--cyan-dim);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            cursor: pointer; position: relative; transition: all 0.15s ease; -webkit-tap-highlight-color: transparent;
-        }
-        .ptt-button:active, .ptt-button.transmitting { border-color: var(--orange-alert); box-shadow: 0 0 35px var(--orange-alert), inset 0 0 18px var(--orange-alert); transform: scale(0.96); }
-        .ptt-button.receiving { border-color: var(--green-active); box-shadow: 0 0 30px var(--green-active), inset 0 0 15px var(--green-active); }
-
-        .ptt-icon { font-size: 1.6rem; color: var(--cyan-glow); margin-bottom: 2px; }
-        .ptt-button.transmitting .ptt-icon { color: var(--orange-alert); }
-        .ptt-button.receiving .ptt-icon { color: var(--green-active); }
-        .ptt-label { font-family: var(--font-head); font-weight: 800; font-size: 0.8rem; letter-spacing: 2px; }
-        .ptt-sublabel { font-family: var(--font-mono); font-size: 0.55rem; color: var(--text-muted); margin-top: 2px; }
-
-        .bottom-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-        .hud-btn {
-            background: var(--panel-bg); border: 1px solid var(--border-glow); color: var(--text-main);
-            font-family: var(--font-head); font-size: 0.65rem; font-weight: 700; padding: 8px 4px;
-            border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            gap: 4px; letter-spacing: 0.5px; transition: all 0.2s;
-        }
-        .hud-btn:active { background: var(--cyan-dim); border-color: var(--cyan-glow); }
-        .hud-btn.party-btn { border-color: var(--purple-party); color: #d88eff; background: rgba(176,0,255,0.08); }
-        .hud-btn.sos-btn { border-color: var(--orange-alert); color: var(--orange-alert); background: var(--orange-dim); }
-
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 7, 10, 0.94); backdrop-filter: blur(12px); z-index: 1000;
-            display: none; flex-direction: column; padding: 20px; justify-content: center; align-items: center;
-        }
-        .modal-overlay.active { display: flex; }
-
-        .modal-card {
-            background: var(--panel-bg); border: 1px solid var(--border-glow); border-radius: 12px;
-            width: 100%; max-width: 400px; padding: 18px; box-shadow: 0 0 30px rgba(0,0,0,0.8);
-            display: flex; flex-direction: column; align-items: center; position: relative;
-        }
-
-        .modal-header { font-family: var(--font-head); font-size: 1rem; color: var(--cyan-glow); letter-spacing: 2px; margin-bottom: 12px; text-align: center; }
-        .modal-input {
-            width: 100%; background: rgba(0,0,0,0.6); border: 1px solid var(--border-glow); border-radius: 6px;
-            padding: 10px; font-family: var(--font-mono); color: var(--text-main); font-size: 0.85rem; margin-bottom: 10px; text-align: center;
-        }
-
-        .member-list { width: 100%; max-height: 140px; overflow-y: auto; margin-bottom: 10px; border: 1px solid var(--border-glow); border-radius: 6px; padding: 6px; }
-        .member-item { display: flex; justify-content: space-between; align-items: center; padding: 6px; font-family: var(--font-mono); font-size: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
-
-        .close-btn { position: absolute; top: 10px; right: 12px; background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
-
-        #sosScreen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 42, 95, 0.96); z-index: 9999; display: none;
-            flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center;
-            animation: sosFlash 1s infinite alternate;
-        }
-        #sosScreen.active { display: flex; }
-
-        @keyframes sosFlash {
-            0% { background: rgba(255, 42, 95, 0.92); }
-            100% { background: rgba(120, 10, 30, 0.96); }
-        }
-
-        .sos-title { font-family: var(--font-head); font-size: 2.2rem; font-weight: 900; color: #fff; letter-spacing: 2px; margin-bottom: 10px; }
-        .sos-loc-box {
-            background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 8px;
-            padding: 12px; width: 100%; max-width: 360px; font-family: var(--font-mono); font-size: 0.85rem; color: #fff; margin: 15px 0; line-height: 1.4;
+        .start-btn {
+            background: #00ffcc;
+            color: #000;
+            border: none;
+            padding: 16px 32px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
         }
     </style>
 </head>
 <body>
 
-    <div id="bootScreen">
-        <div class="boot-title">R34L_T4LK</div>
-        <div class="boot-subtitle">// PARTY SYNC & HYBRID COMMS //</div>
-        <div class="boot-loader-bar">
-            <div class="boot-loader-fill" id="bootFill"></div>
-        </div>
-        <div class="boot-log" id="bootLog">INITIALIZING ENGINE...</div>
+    <div id="startModal">
+        <button class="start-btn" id="startBtn">TAP TO START TALKIE</button>
     </div>
 
-    <div class="compass-bar">
-        <div class="compass-brand">R34L<span>_T4LK</span></div>
-        <div class="compass-tape-container">
-            <div class="compass-tape" id="compassTape">N -- NE -- E -- SE -- S -- SW -- W -- NW -- N -- NE -- E</div>
-            <div class="compass-needle-indicator"></div>
-        </div>
-        <div class="net-mode-badge" id="netBadge">ONLINE MESH</div>
+    <div class="header">
+        <h1>WALKIE TALKIE</h1>
+        <div class="status" id="statusText">CONNECTING...</div>
     </div>
 
-    <div class="app-container">
-        <div class="telemetry-grid">
-            <div class="tele-card"><div class="tele-val" id="teleSpeed">0.0</div><div class="tele-lbl">KM/H</div></div>
-            <div class="tele-card"><div class="tele-val" id="teleAlt">0m</div><div class="tele-lbl">ELEV</div></div>
-            <div class="tele-card"><div class="tele-val" id="teleBatt">--%</div><div class="tele-lbl">BATT</div></div>
-        </div>
-
-        <div class="viewport">
-            <div class="nav-hud-box">
-                <div class="nav-direction-arrow" id="navArrow">⬆</div>
-                <div class="nav-target-name" id="navTargetName">SYNCING ROUTE TO PEER...</div>
-                <div class="nav-distance" id="navDistance">DISTANCE: -- M</div>
-            </div>
-
-            <canvas id="audioVisualizer"></canvas>
-
-            <div class="signal-status-bar">
-                <span style="width:7px; height:7px; border-radius:50%; background:var(--green-active);" id="signalDot"></span>
-                <span id="signalText">READY // BT SHUTTER BOUND</span>
-            </div>
-        </div>
-
-        <div class="ptt-container">
-            <div class="ptt-button" id="pttBtn">
-                <div class="ptt-icon">🎙️</div>
-                <div class="ptt-label">HOLD TO TALK</div>
-                <div class="ptt-sublabel">BT SHUTTER / SPACEBAR</div>
-            </div>
-        </div>
-
-        <div class="bottom-actions">
-            <button class="hud-btn" id="roomBtn"><span>⚙️</span> ROOM</button>
-            <button class="hud-btn party-btn" id="partyBtn"><span>🎧</span> PARTY SYNC</button>
-            <button class="hud-btn sos-btn" id="sosTriggerBtn"><span>🚨</span> SOS</button>
-        </div>
+    <div class="ptt-button" id="pttBtn">
+        <div class="mic-icon">🎙️</div>
+        <div class="btn-label" id="btnLabel">HOLD TO TALK</div>
     </div>
 
-    <div class="modal-overlay" id="roomModal">
-        <div class="modal-card">
-            <button class="close-btn" id="closeRoomModal">✕</button>
-            <div class="modal-header">ROOM CONFIG</div>
-            <input type="text" class="modal-input" id="roomCodeInput" value="TRIP-ALPHA-01">
-            <button class="hud-btn" id="saveRoomBtn" style="width:100%; padding:10px;">JOIN ROOM</button>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="partyModal">
-        <div class="modal-card">
-            <button class="close-btn" id="closePartyModal">✕</button>
-            <div class="modal-header">AI PARTY MEDIA SYNC</div>
-            <div style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">
-                Select active members to invite into shared media session (YT Music / Audio Stream)
-            </div>
-            <div class="member-list" id="memberListContainer">
-                <div class="member-item"><span>RIDER_02 (LEAD)</span> <input type="checkbox" checked></div>
-                <div class="member-item"><span>RIDER_03 (SWEEP)</span> <input type="checkbox" checked></div>
-                <div class="member-item"><span>RIDER_04</span> <input type="checkbox"></div>
-            </div>
-            <input type="text" class="modal-input" id="mediaUrlInput" placeholder="Paste YouTube / Stream Audio URL" value="https://music.youtube.com/watch?v=sample">
-            <button class="hud-btn party-btn" id="broadcastMediaBtn" style="width:100%; padding:10px;">SYNC PLAYBACK TO SELECTED</button>
-        </div>
-    </div>
-
-    <div id="sosScreen">
-        <div class="sos-title">🚨 SOS EMERGENCY 🚨</div>
-        <div style="font-family:var(--font-mono); font-size:0.8rem; color:#ffe6ee;">
-            ROBOTIC VOICE ANNOUNCING VICTIM LOCATION & ROUTE DIRECTIONS
-        </div>
-        <div class="sos-loc-box" id="sosLocText">ACQUIRING LOCATION...</div>
-        <button class="hud-btn" id="cancelSosBtn" style="background:#000; color:#fff; border-color:#fff; padding:10px 20px; font-size:0.8rem;">CANCEL SOS</button>
+    <div class="footer-info">
+        Press button or holding Spacebar to talk
     </div>
 
     <script>
         let ws;
-        const state = {
-            roomID: "TRIP-ALPHA-01",
-            memberId: "RIDER_" + Math.floor(1000 + Math.random() * 9000),
-            lat: 28.6139,
-            lon: 77.2090,
-            speed: 0,
-            heading: 0,
-            alt: 0,
-            transmitting: false,
-            peerLat: 28.6150,
-            peerLon: 77.2110,
-            peerName: "PEER_RIDER",
-            sosActive: false
-        };
+        let mediaRecorder;
+        let micStream;
+        let isTransmitting = false;
 
-        const elements = {
-            bootScreen: document.getElementById('bootScreen'),
-            bootFill: document.getElementById('bootFill'),
-            bootLog: document.getElementById('bootLog'),
-            compassTape: document.getElementById('compassTape'),
-            netBadge: document.getElementById('netBadge'),
-            teleSpeed: document.getElementById('teleSpeed'),
-            teleAlt: document.getElementById('teleAlt'),
-            teleBatt: document.getElementById('teleBatt'),
-            navArrow: document.getElementById('navArrow'),
-            navTargetName: document.getElementById('navTargetName'),
-            navDistance: document.getElementById('navDistance'),
-            signalText: document.getElementById('signalText'),
-            pttBtn: document.getElementById('pttBtn'),
-            roomBtn: document.getElementById('roomBtn'),
-            partyBtn: document.getElementById('partyBtn'),
-            sosTriggerBtn: document.getElementById('sosTriggerBtn'),
-            roomModal: document.getElementById('roomModal'),
-            closeRoomModal: document.getElementById('closeRoomModal'),
-            roomCodeInput: document.getElementById('roomCodeInput'),
-            saveRoomBtn: document.getElementById('saveRoomBtn'),
-            partyModal: document.getElementById('partyModal'),
-            closePartyModal: document.getElementById('closePartyModal'),
-            broadcastMediaBtn: document.getElementById('broadcastMediaBtn'),
-            mediaUrlInput: document.getElementById('mediaUrlInput'),
-            sosScreen: document.getElementById('sosScreen'),
-            sosLocText: document.getElementById('sosLocText'),
-            cancelSosBtn: document.getElementById('cancelSosBtn'),
-            visualizerCanvas: document.getElementById('audioVisualizer')
-        };
+        const pttBtn = document.getElementById('pttBtn');
+        const btnLabel = document.getElementById('btnLabel');
+        const statusText = document.getElementById('statusText');
+        const startModal = document.getElementById('startModal');
+        const startBtn = document.getElementById('startBtn');
 
-        window.addEventListener('DOMContentLoaded', () => {
-            let p = 0;
-            const t = setInterval(() => {
-                p += 25;
-                elements.bootFill.style.width = p + '%';
-                if (p >= 100) {
-                    clearInterval(t);
-                    setTimeout(() => {
-                        elements.bootScreen.style.opacity = '0';
-                        setTimeout(() => elements.bootScreen.style.display = 'none', 600);
-                        initEngine();
-                        connectWebSocket();
-                    }, 400);
-                }
-            }, 250);
+        startBtn.addEventListener('click', async () => {
+            startModal.style.display = 'none';
+
+            try {
+                // Request Microphone Permission
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                setupMediaRecorder();
+                connectWebSocket();
+            } catch (err) {
+                alert("Microphone permission required for walkie talkie!");
+            }
         });
 
         function connectWebSocket() {
-            const proto = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-            ws = new WebSocket(proto + window.location.host);
+            const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+            ws = new WebSocket(protocol + window.location.host);
+            ws.binaryType = 'arraybuffer';
 
             ws.onopen = () => {
-                ws.send(JSON.stringify({ type: 'JOIN_ROOM', roomID: state.roomID, memberId: state.memberId }));
+                statusText.innerText = "ONLINE // READY";
+                statusText.classList.add('online');
             };
 
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'PEER_GPS') {
-                    state.peerLat = data.lat;
-                    state.peerLon = data.lon;
-                    state.peerName = data.sender;
-                    updateNav();
-                } else if (data.type === 'SOS_ALERT') {
-                    triggerSOSAlert(data.sender, data.lat, data.lon);
-                } else if (data.type === 'PARTY_MEDIA_SYNC') {
-                    console.log("Party media sync received:", data.mediaUrl);
+            ws.onclose = () => {
+                statusText.innerText = "DISCONNECTED";
+                statusText.classList.remove('online');
+                setTimeout(connectWebSocket, 2000);
+            };
+
+            ws.onmessage = async (event) => {
+                // Play incoming live voice buffer directly
+                if (event.data instanceof ArrayBuffer) {
+                    playAudioBuffer(event.data);
                 }
             };
         }
 
-        function initEngine() {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            const ctx = new AudioCtx();
-            const analyser = ctx.createAnalyser();
-            analyser.fftSize = 64;
-            drawVis(analyser);
-
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                const mic = ctx.createMediaStreamSource(stream);
-                mic.connect(analyser);
-            }).catch(() => {});
-
-            if (window.DeviceOrientationEvent) {
-                window.addEventListener('deviceorientation', e => {
-                    if (e.alpha !== null) {
-                        state.heading = e.alpha;
-                        elements.compassTape.style.transform = `translateX(${-(e.alpha / 360) * 300}px)`;
-                        updateNav();
-                    }
-                });
-            }
-
-            if ('geolocation' in navigator) {
-                navigator.geolocation.watchPosition(pos => {
-                    state.lat = pos.coords.latitude;
-                    state.lon = pos.coords.longitude;
-                    state.speed = pos.coords.speed ? (pos.coords.speed * 3.6).toFixed(1) : "0.0";
-                    state.alt = pos.coords.altitude ? Math.round(pos.coords.altitude) : "0";
-                    elements.teleSpeed.innerText = state.speed;
-                    elements.teleAlt.innerText = state.alt + 'm';
-                    updateNav();
-
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({
-                            type: 'GPS_UPDATE',
-                            lat: state.lat,
-                            lon: state.lon,
-                            speed: state.speed,
-                            alt: state.alt,
-                            heading: state.heading
-                        }));
-                    }
-                }, null, { enableHighAccuracy: true });
-            }
-
-            if ('getBattery' in navigator) {
-                navigator.getBattery().then(b => {
-                    const upd = () => elements.teleBatt.innerText = Math.round(b.level * 100) + '%';
-                    upd();
-                    b.addEventListener('levelchange', upd);
-                });
-            }
-
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.setActionHandler('play', startPTT);
-                navigator.mediaSession.setActionHandler('pause', stopPTT);
-                navigator.mediaSession.setActionHandler('previoustrack', startPTT);
-                navigator.mediaSession.setActionHandler('nexttrack', stopPTT);
-            }
-
-            window.addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat && !state.transmitting) startPTT(); });
-            window.addEventListener('keyup', e => { if (e.code === 'Space' && state.transmitting) stopPTT(); });
-
-            elements.pttBtn.addEventListener('mousedown', startPTT);
-            elements.pttBtn.addEventListener('mouseup', stopPTT);
-            elements.pttBtn.addEventListener('touchstart', e => { e.preventDefault(); startPTT(); });
-            elements.pttBtn.addEventListener('touchend', e => { e.preventDefault(); stopPTT(); });
+        function setupMediaRecorder() {
+            mediaRecorder = new MediaRecorder(micStream);
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0 && ws && ws.readyState === WebSocket.OPEN && isTransmitting) {
+                    ws.send(e.data);
+                }
+            };
         }
 
-        function startPTT() {
-            state.transmitting = true;
-            elements.pttBtn.classList.add('transmitting');
-            elements.signalText.innerText = "TX // TRANSMITTING VOICE...";
+        async function playAudioBuffer(buffer) {
+            try {
+                pttBtn.classList.add('receiving');
+                btnLabel.innerText = "INCOMING VOICE...";
+
+                const blob = new Blob([buffer], { type: 'audio/webm' });
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                await audio.play();
+
+                setTimeout(() => {
+                    if (!isTransmitting) {
+                        pttBtn.classList.remove('receiving');
+                        btnLabel.innerText = "HOLD TO TALK";
+                    }
+                }, 400);
+            } catch (err) {
+                console.log("Audio play error:", err);
+            }
+        }
+
+        function startTalking() {
+            if (isTransmitting) return;
+            isTransmitting = true;
+            pttBtn.classList.add('active');
+            btnLabel.innerText = "TALKING...";
             if (navigator.vibrate) navigator.vibrate(40);
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'PTT_STATUS', status: 'TRANSMITTING' }));
+
+            if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                mediaRecorder.start(100); // Record & send audio in 100ms chunks
             }
         }
 
-        function stopPTT() {
-            state.transmitting = false;
-            elements.pttBtn.classList.remove('transmitting');
-            elements.signalText.innerText = "READY // BT SHUTTER BOUND";
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'PTT_STATUS', status: 'IDLE' }));
+        function stopTalking() {
+            if (!isTransmitting) return;
+            isTransmitting = false;
+            pttBtn.classList.remove('active');
+            btnLabel.innerText = "HOLD TO TALK";
+
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
             }
         }
 
-        function drawVis(analyser) {
-            const canvas = elements.visualizerCanvas;
-            const ctx = canvas.getContext('2d');
-            const arr = new Uint8Array(analyser.frequencyBinCount);
-            function render() {
-                requestAnimationFrame(render);
-                analyser.getByteFrequencyData(arr);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                let w = (canvas.width / arr.length) * 2.5, x = 0;
-                for (let i = 0; i < arr.length; i++) {
-                    let h = (arr[i] / 255) * canvas.height;
-                    ctx.fillStyle = state.transmitting ? '#ff2a5f' : '#00f0ff';
-                    ctx.fillRect(x, canvas.height - h, w, h);
-                    x += w + 2;
-                }
-            }
-            render();
-        }
+        // Touch & Mouse Listeners
+        pttBtn.addEventListener('mousedown', startTalking);
+        pttBtn.addEventListener('mouseup', stopTalking);
+        pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startTalking(); });
+        pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopTalking(); });
 
-        function updateNav() {
-            const R = 6371e3, φ1 = state.lat * Math.PI/180, φ2 = state.peerLat * Math.PI/180;
-            const Δφ = (state.peerLat - state.lat) * Math.PI/180, Δλ = (state.peerLon - state.lon) * Math.PI/180;
-            const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
-            const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            
-            elements.navDistance.innerText = `DISTANCE TO ${state.peerName}: ${dist > 1000 ? (dist/1000).toFixed(1)+' KM' : Math.round(dist)+' M'}`;
-            elements.navTargetName.innerText = `ROUTE SYSTEM // TRACKING ${state.peerName}`;
-            
-            const y = Math.sin(Δλ)*Math.cos(φ2), x = Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
-            let bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-            let rel = (bearing - state.heading + 360) % 360;
-            const arrows = ['⬆', '↗', '➡', '↘', '⬇', '↙', '⬅', '↖'];
-            elements.navArrow.innerText = arrows[Math.round(rel / 45) % 8];
-        }
-
-        let sosClicks = 0, sosTimer = null, sosHold = null;
-        elements.sosTriggerBtn.addEventListener('click', () => {
-            sosClicks++;
-            clearTimeout(sosTimer);
-            if (sosClicks >= 5) { triggerSOS(); sosClicks = 0; }
-            else { sosTimer = setTimeout(() => sosClicks = 0, 2000); }
-        });
-        elements.sosTriggerBtn.addEventListener('touchstart', () => sosHold = setTimeout(triggerSOS, 5000));
-        elements.sosTriggerBtn.addEventListener('touchend', () => clearTimeout(sosHold));
-
-        function triggerSOS() {
-            state.sosActive = true;
-            elements.sosScreen.classList.add('active');
-            elements.sosLocText.innerText = `LAT: ${state.lat.toFixed(5)}, LON: ${state.lon.toFixed(5)}\nROOM: ${state.roomID}`;
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'SOS_ALERT', lat: state.lat, lon: state.lon }));
-            }
-            if ('speechSynthesis' in window) {
-                let msg = new SpeechSynthesisUtterance(`SOS Emergency! Victim located at coordinates latitude ${state.lat.toFixed(4)}, longitude ${state.lon.toFixed(4)}. Follow map route.`);
-                msg.pitch = 0.8; window.speechSynthesis.speak(msg);
-            }
-        }
-
-        function triggerSOSAlert(sender, lat, lon) {
-            state.sosActive = true;
-            elements.sosScreen.classList.add('active');
-            elements.sosLocText.innerText = `ALERT FROM ${sender}!\nLAT: ${lat.toFixed(5)}, LON: ${lon.toFixed(5)}`;
-            if ('speechSynthesis' in window) {
-                let msg = new SpeechSynthesisUtterance(`Emergency alert from rider ${sender}! Check screen coordinates.`);
-                msg.pitch = 0.8; window.speechSynthesis.speak(msg);
-            }
-        }
-
-        elements.cancelSosBtn.addEventListener('click', () => {
-            state.sosActive = false;
-            elements.sosScreen.classList.remove('active');
-            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-        });
-
-        elements.roomBtn.addEventListener('click', () => elements.roomModal.classList.add('active'));
-        elements.closeRoomModal.addEventListener('click', () => elements.roomModal.classList.remove('active'));
-        elements.saveRoomBtn.addEventListener('click', () => {
-            state.roomID = elements.roomCodeInput.value || "TRIP-ALPHA-01";
-            elements.roomModal.classList.remove('active');
-            elements.netBadge.innerText = state.roomID;
-            if (ws) ws.close();
-            connectWebSocket();
-        });
-
-        elements.partyBtn.addEventListener('click', () => elements.partyModal.classList.add('active'));
-        elements.closePartyModal.addEventListener('click', () => elements.partyModal.classList.remove('active'));
-        elements.broadcastMediaBtn.addEventListener('click', () => {
-            const url = elements.mediaUrlInput.value;
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'PARTY_MEDIA_SYNC', mediaUrl: url }));
-            }
-            alert("Party Media Synced!");
-            elements.partyModal.classList.remove('active');
-        });
+        // Spacebar Control
+        window.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat) startTalking(); });
+        window.addEventListener('keyup', (e) => { if (e.code === 'Space') stopTalking(); });
     </script>
 </body>
 </html>
