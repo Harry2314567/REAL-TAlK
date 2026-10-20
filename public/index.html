@@ -9,6 +9,7 @@
             --bg-dark: #05070a;
             --cyan-glow: #00f0ff;
             --orange-alert: #ff2a5f;
+            --green-active: #00ff66;
             --text-main: #e6f1ff;
         }
 
@@ -43,7 +44,7 @@
         .neon-loader-container {
             display: flex;
             gap: 8px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
 
         .neon-char {
@@ -51,7 +52,6 @@
             font-weight: 900;
             font-style: italic;
             color: #111;
-            text-shadow: none;
             transition: color 0.15s ease, text-shadow 0.15s ease;
         }
 
@@ -60,18 +60,25 @@
             text-shadow: 0 0 10px var(--cyan-glow), 0 0 20px var(--cyan-glow), 0 0 40px var(--cyan-glow);
         }
 
-        .boot-status {
-            font-size: 0.85rem;
-            letter-spacing: 3px;
-            color: #555;
-            text-transform: uppercase;
+        .start-btn {
+            background: var(--cyan-glow);
+            color: #000;
+            font-family: monospace;
+            font-weight: 900;
+            padding: 14px 28px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--cyan-glow);
+            font-size: 0.95rem;
+            margin-top: 15px;
+            letter-spacing: 1px;
         }
 
-        /* Main App Interface */
         .header { text-align: center; margin-top: 10px; }
         .header h1 { font-size: 1.6rem; letter-spacing: 2px; color: var(--cyan-glow); }
-        .status { font-size: 0.85rem; color: #555; margin-top: 5px; }
-        .status.online { color: #00ff66; }
+        .status { font-size: 0.85rem; color: #555; margin-top: 5px; letter-spacing: 1px; }
+        .status.online { color: var(--green-active); }
 
         .ptt-button {
             width: 220px; height: 220px; border-radius: 50%;
@@ -88,14 +95,18 @@
         }
 
         .ptt-button.receiving {
-            border-color: #00ff66; box-shadow: 0 0 35px rgba(0, 255, 102, 0.4);
+            border-color: var(--green-active); box-shadow: 0 0 35px rgba(0, 255, 102, 0.4);
         }
 
         .btn-label { font-weight: 800; font-size: 0.95rem; letter-spacing: 2px; color: var(--text-main); }
         .footer-info { font-size: 0.75rem; color: #444; text-align: center; letter-spacing: 1px; }
+
+        audio { display: none; }
     </style>
 </head>
 <body>
+
+    <audio id="remoteAudio" autoplay playsinline></audio>
 
     <div id="bootScreen">
         <div class="neon-loader-container" id="neonLoader">
@@ -109,12 +120,12 @@
             <span class="neon-char">L</span>
             <span class="neon-char">K</span>
         </div>
-        <div class="boot-status" id="bootStatus">INITIALIZING AUDIO MESH</div>
+        <button class="start-btn" id="startBtn">INITIALIZE VOICE ENGINE</button>
     </div>
 
     <div class="header">
         <h1>R34L_T4LK</h1>
-        <div class="status" id="statusText">CONNECTING</div>
+        <div class="status" id="statusText">DISCONNECTED</div>
     </div>
 
     <div class="ptt-button" id="pttBtn">
@@ -127,71 +138,66 @@
 
     <script>
         let ws;
-        let mediaRecorder;
-        let micStream;
+        let localStream;
+        let peerConnection;
         let isTransmitting = false;
 
         const chars = document.querySelectorAll('.neon-char');
-        const bootStatus = document.getElementById('bootStatus');
+        const startBtn = document.getElementById('startBtn');
         const bootScreen = document.getElementById('bootScreen');
         const pttBtn = document.getElementById('pttBtn');
         const btnLabel = document.getElementById('btnLabel');
         const statusText = document.getElementById('statusText');
+        const remoteAudio = document.getElementById('remoteAudio');
 
-        // Futuristic Neon Letter Loading Animation Sequence
-        window.addEventListener('DOMContentLoaded', () => {
-            let activeIdx = 0;
-            const statuses = ["INITIALIZING AUDIO MESH", "CALIBRATING CHANNELS", "SYSTEM READY"];
-            let statusStep = 0;
+        // Neon Loading Text Effect
+        let activeIdx = 0;
+        const loadInterval = setInterval(() => {
+            chars.forEach((c, idx) => {
+                if (idx <= activeIdx) c.classList.add('active');
+                else c.classList.remove('active');
+            });
+            activeIdx = (activeIdx + 1) % chars.length;
+        }, 120);
 
-            const loadInterval = setInterval(() => {
-                chars.forEach((c, idx) => {
-                    if (idx <= activeIdx) {
-                        c.classList.add('active');
-                    } else {
-                        c.classList.remove('active');
-                    }
+        // STUN Servers for WebRTC NAT traversal across cellular/Wi-Fi networks
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
+        startBtn.addEventListener('click', async () => {
+            clearInterval(loadInterval);
+            chars.forEach(c => c.classList.add('active'));
+
+            try {
+                // Request Microphone Access
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
                 });
 
-                activeIdx++;
-                if (activeIdx >= chars.length) {
-                    activeIdx = 0;
-                    statusStep++;
-                    if (statusStep < statuses.length) {
-                        bootStatus.innerText = statuses[statusStep];
-                    }
-                }
-            }, 120);
+                // Mute local mic track by default until PTT button is pressed
+                localStream.getAudioTracks().forEach(track => track.enabled = false);
 
-            // Auto initialize after load cycle
-            setTimeout(async () => {
-                clearInterval(loadInterval);
-                chars.forEach(c => c.classList.add('active'));
-                bootStatus.innerText = "ONLINE";
+                bootScreen.style.opacity = '0';
+                setTimeout(() => bootScreen.style.display = 'none', 800);
 
-                setTimeout(async () => {
-                    bootScreen.style.opacity = '0';
-                    setTimeout(() => bootScreen.style.display = 'none', 800);
-
-                    try {
-                        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        setupMediaRecorder();
-                        connectWebSocket();
-                    } catch (e) {
-                        alert("Microphone permission required.");
-                    }
-                }, 600);
-            }, 3000);
+                connectWebSocket();
+            } catch (err) {
+                alert("Microphone permission is required to talk.");
+            }
         });
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
             ws = new WebSocket(protocol + window.location.host);
-            ws.binaryType = 'arraybuffer';
 
             ws.onopen = () => {
                 statusText.innerText = "ONLINE";
                 statusText.classList.add('online');
+                initPeerConnection();
             };
 
             ws.onclose = () => {
@@ -201,63 +207,73 @@
             };
 
             ws.onmessage = async (event) => {
-                if (event.data instanceof ArrayBuffer) {
-                    playAudioBuffer(event.data);
+                const message = JSON.parse(event.data);
+
+                if (message.offer) {
+                    if (!peerConnection) initPeerConnection();
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    ws.send(JSON.stringify({ answer }));
+                } else if (message.answer) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                } else if (message.candidate) {
+                    if (peerConnection) {
+                        try {
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                        } catch (e) {}
+                    }
                 }
             };
         }
 
-        function setupMediaRecorder() {
-            mediaRecorder = new MediaRecorder(micStream);
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0 && ws && ws.readyState === WebSocket.OPEN && isTransmitting) {
-                    ws.send(e.data);
-                }
-            };
-        }
+        function initPeerConnection() {
+            peerConnection = new RTCPeerConnection(rtcConfig);
 
-        async function playAudioBuffer(buffer) {
-            try {
+            // Add local mic stream to peer connection
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+            // Receive remote voice audio stream
+            peerConnection.ontrack = (event) => {
+                remoteAudio.srcObject = event.streams[0];
+                remoteAudio.play().catch(e => console.log("Audio play error:", e));
                 pttBtn.classList.add('receiving');
                 btnLabel.innerText = "RECEIVING";
+            };
 
-                const blob = new Blob([buffer], { type: 'audio/webm' });
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                await audio.play();
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ candidate: event.candidate }));
+                }
+            };
 
-                setTimeout(() => {
-                    if (!isTransmitting) {
-                        pttBtn.classList.remove('receiving');
-                        btnLabel.innerText = "HOLD TO TALK";
-                    }
-                }, 400);
-            } catch (err) {
-                console.log(err);
-            }
+            // Create WebRTC Offer
+            peerConnection.createOffer().then(offer => {
+                return peerConnection.setLocalDescription(offer);
+            }).then(() => {
+                ws.send(JSON.stringify({ offer: peerConnection.localDescription }));
+            });
         }
 
         function startTalking() {
-            if (isTransmitting) return;
+            if (isTransmitting || !localStream) return;
             isTransmitting = true;
             pttBtn.classList.add('active');
             btnLabel.innerText = "TRANSMITTING";
             if (navigator.vibrate) navigator.vibrate(40);
 
-            if (mediaRecorder && mediaRecorder.state === 'inactive') {
-                mediaRecorder.start(100);
-            }
+            // Enable local mic audio track
+            localStream.getAudioTracks().forEach(track => track.enabled = true);
         }
 
         function stopTalking() {
-            if (!isTransmitting) return;
+            if (!isTransmitting || !localStream) return;
             isTransmitting = false;
             pttBtn.classList.remove('active');
             btnLabel.innerText = "HOLD TO TALK";
 
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-            }
+            // Mute local mic audio track
+            localStream.getAudioTracks().forEach(track => track.enabled = false);
         }
 
         pttBtn.addEventListener('mousedown', startTalking);
