@@ -1,7 +1,7 @@
 {
-  "name": "simple-walkie-talkie",
+  "name": "r34l-t4lk-walkie-talkie",
   "version": "1.0.0",
-  "description": "Pure Voice Walkie-Talkie Web App",
+  "description": "R34L_T4LK Real-time WebRTC Cycling Walkie-Talkie",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
