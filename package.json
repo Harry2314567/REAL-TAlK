@@ -1,7 +1,7 @@
 {
-  "name": "R34l-T4lK",
-  "version": "3.0.0",
-  "description": "R34L_T4LK Hybrid Cycling Comms, GPS Route & Party Sync App",
+  "name": "simple-walkie-talkie",
+  "version": "1.0.0",
+  "description": "Pure Voice Walkie-Talkie Web App",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
