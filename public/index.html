@@ -28,7 +28,7 @@
             overflow: hidden;
         }
 
-        /* Futuristic Neon Loading Screen Overlay */
+        /* Pure Futuristic Neon Loading Screen Overlay */
         #bootScreen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -38,47 +38,57 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            transition: opacity 0.8s ease;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
         }
 
         .neon-loader-container {
             display: flex;
-            gap: 8px;
-            margin-bottom: 25px;
+            gap: 10px;
+            margin-bottom: 40px;
         }
 
         .neon-char {
-            font-size: 2.8rem;
+            font-size: 3.2rem;
             font-weight: 900;
             font-style: italic;
-            color: #111;
-            transition: color 0.15s ease, text-shadow 0.15s ease;
+            color: #121820;
+            transition: color 0.12s ease-in-out, text-shadow 0.12s ease-in-out;
         }
 
         .neon-char.active {
             color: var(--cyan-glow);
-            text-shadow: 0 0 10px var(--cyan-glow), 0 0 20px var(--cyan-glow), 0 0 40px var(--cyan-glow);
+            text-shadow: 0 0 12px var(--cyan-glow), 0 0 25px var(--cyan-glow), 0 0 50px var(--cyan-glow);
         }
 
         .start-btn {
-            background: var(--cyan-glow);
-            color: #000;
+            background: transparent;
+            color: var(--cyan-glow);
             font-family: monospace;
             font-weight: 900;
-            padding: 14px 28px;
-            border-radius: 6px;
-            border: none;
+            font-style: italic;
+            padding: 16px 36px;
+            border-radius: 4px;
+            border: 2px solid var(--cyan-glow);
             cursor: pointer;
-            box-shadow: 0 0 20px var(--cyan-glow);
-            font-size: 0.95rem;
-            margin-top: 15px;
-            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 15px rgba(0, 240, 255, 0.2);
+            font-size: 1rem;
+            letter-spacing: 2px;
+            transition: all 0.2s ease;
+            text-shadow: 0 0 8px var(--cyan-glow);
         }
 
+        .start-btn:active {
+            background: var(--cyan-glow);
+            color: #000;
+            box-shadow: 0 0 30px var(--cyan-glow);
+            transform: scale(0.96);
+        }
+
+        /* Main UI Interface */
         .header { text-align: center; margin-top: 10px; }
-        .header h1 { font-size: 1.6rem; letter-spacing: 2px; color: var(--cyan-glow); }
-        .status { font-size: 0.85rem; color: #555; margin-top: 5px; letter-spacing: 1px; }
-        .status.online { color: var(--green-active); }
+        .header h1 { font-size: 1.8rem; letter-spacing: 3px; color: var(--cyan-glow); font-style: italic; }
+        .status { font-size: 0.85rem; color: #555; margin-top: 5px; letter-spacing: 2px; }
+        .status.online { color: var(--green-active); text-shadow: 0 0 8px var(--green-active); }
 
         .ptt-button {
             width: 220px; height: 220px; border-radius: 50%;
@@ -98,7 +108,7 @@
             border-color: var(--green-active); box-shadow: 0 0 35px rgba(0, 255, 102, 0.4);
         }
 
-        .btn-label { font-weight: 800; font-size: 0.95rem; letter-spacing: 2px; color: var(--text-main); }
+        .btn-label { font-weight: 800; font-size: 0.95rem; letter-spacing: 2px; color: var(--text-main); font-style: italic; }
         .footer-info { font-size: 0.75rem; color: #444; text-align: center; letter-spacing: 1px; }
 
         audio { display: none; }
@@ -108,6 +118,7 @@
 
     <audio id="remoteAudio" autoplay playsinline></audio>
 
+    <!-- Clean Neon Boot Screen -->
     <div id="bootScreen">
         <div class="neon-loader-container" id="neonLoader">
             <span class="neon-char">R</span>
@@ -120,7 +131,7 @@
             <span class="neon-char">L</span>
             <span class="neon-char">K</span>
         </div>
-        <button class="start-btn" id="startBtn">INITIALIZE VOICE ENGINE</button>
+        <button class="start-btn" id="startBtn">INITIALIZE SYSTEM</button>
     </div>
 
     <div class="header">
@@ -150,17 +161,19 @@
         const statusText = document.getElementById('statusText');
         const remoteAudio = document.getElementById('remoteAudio');
 
-        // Neon Loading Text Effect
+        // Continuous Neon Letter Flash Cycle
         let activeIdx = 0;
         const loadInterval = setInterval(() => {
             chars.forEach((c, idx) => {
-                if (idx <= activeIdx) c.classList.add('active');
-                else c.classList.remove('active');
+                if (idx === activeIdx) {
+                    c.classList.add('active');
+                } else {
+                    c.classList.remove('active');
+                }
             });
             activeIdx = (activeIdx + 1) % chars.length;
-        }, 120);
+        }, 110);
 
-        // STUN Servers for WebRTC NAT traversal across cellular/Wi-Fi networks
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -173,12 +186,10 @@
             chars.forEach(c => c.classList.add('active'));
 
             try {
-                // Request Microphone Access
                 localStream = await navigator.mediaDevices.getUserMedia({
                     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
                 });
 
-                // Mute local mic track by default until PTT button is pressed
                 localStream.getAudioTracks().forEach(track => track.enabled = false);
 
                 bootScreen.style.opacity = '0';
@@ -186,7 +197,7 @@
 
                 connectWebSocket();
             } catch (err) {
-                alert("Microphone permission is required to talk.");
+                alert("Microphone permission required.");
             }
         });
 
@@ -230,13 +241,11 @@
         function initPeerConnection() {
             peerConnection = new RTCPeerConnection(rtcConfig);
 
-            // Add local mic stream to peer connection
             localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-            // Receive remote voice audio stream
             peerConnection.ontrack = (event) => {
                 remoteAudio.srcObject = event.streams[0];
-                remoteAudio.play().catch(e => console.log("Audio play error:", e));
+                remoteAudio.play().catch(e => console.log(e));
                 pttBtn.classList.add('receiving');
                 btnLabel.innerText = "RECEIVING";
             };
@@ -247,7 +256,6 @@
                 }
             };
 
-            // Create WebRTC Offer
             peerConnection.createOffer().then(offer => {
                 return peerConnection.setLocalDescription(offer);
             }).then(() => {
@@ -262,7 +270,6 @@
             btnLabel.innerText = "TRANSMITTING";
             if (navigator.vibrate) navigator.vibrate(40);
 
-            // Enable local mic audio track
             localStream.getAudioTracks().forEach(track => track.enabled = true);
         }
 
@@ -272,7 +279,6 @@
             pttBtn.classList.remove('active');
             btnLabel.innerText = "HOLD TO TALK";
 
-            // Mute local mic audio track
             localStream.getAudioTracks().forEach(track => track.enabled = false);
         }
 
