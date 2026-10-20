@@ -1,12 +1,16 @@
 {
-  "name": "real-talk",
-  "version": "1.0.0",
+  "name": "R34l-T4lK",
+  "version": "3.0.0",
+  "description": "R34L_T4LK Hybrid Cycling Comms, GPS Route & Party Sync App",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "socket.io": "^4.7.5"
+    "express": "^4.18.2",
+    "ws": "^8.13.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
