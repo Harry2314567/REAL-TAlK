@@ -3,137 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WALKIE TALKIE</title>
+    <title>R34L_T4LK // Tactical Comms</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            -webkit-user-select: none;
+        :root {
+            --bg-dark: #05070a;
+            --cyan-glow: #00f0ff;
+            --orange-alert: #ff2a5f;
+            --text-main: #e6f1ff;
         }
 
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+
         body {
-            background-color: #121212;
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: monospace;
             height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
             padding: 30px 20px;
+            overflow: hidden;
         }
 
-        .header {
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        .header h1 {
-            font-size: 1.8rem;
-            letter-spacing: 2px;
-            color: #00ffcc;
-        }
-
-        .status {
-            font-size: 0.9rem;
-            color: #888;
-            margin-top: 5px;
-        }
-
-        .status.online {
-            color: #00ff66;
-        }
-
-        /* Large Touch Button */
-        .ptt-button {
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: #1e1e1e;
-            border: 4px solid #00ffcc;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+        /* Futuristic Neon Loading Screen Overlay */
+        #bootScreen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-dark);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
-            transition: all 0.15s ease;
+            z-index: 1000;
+            transition: opacity 0.8s ease;
+        }
+
+        .neon-loader-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 30px;
+        }
+
+        .neon-char {
+            font-size: 2.8rem;
+            font-weight: 900;
+            font-style: italic;
+            color: #111;
+            text-shadow: none;
+            transition: color 0.15s ease, text-shadow 0.15s ease;
+        }
+
+        .neon-char.active {
+            color: var(--cyan-glow);
+            text-shadow: 0 0 10px var(--cyan-glow), 0 0 20px var(--cyan-glow), 0 0 40px var(--cyan-glow);
+        }
+
+        .boot-status {
+            font-size: 0.85rem;
+            letter-spacing: 3px;
+            color: #555;
+            text-transform: uppercase;
+        }
+
+        /* Main App Interface */
+        .header { text-align: center; margin-top: 10px; }
+        .header h1 { font-size: 1.6rem; letter-spacing: 2px; color: var(--cyan-glow); }
+        .status { font-size: 0.85rem; color: #555; margin-top: 5px; }
+        .status.online { color: #00ff66; }
+
+        .ptt-button {
+            width: 220px; height: 220px; border-radius: 50%;
+            background: #0d1117; border: 3px solid var(--cyan-glow);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.15s ease;
             -webkit-tap-highlight-color: transparent;
         }
 
         .ptt-button:active, .ptt-button.active {
-            background: #2a1111;
-            border-color: #ff3366;
-            box-shadow: 0 0 35px rgba(255, 51, 102, 0.5);
-            transform: scale(0.95);
+            background: #1a080d; border-color: var(--orange-alert);
+            box-shadow: 0 0 40px rgba(255, 42, 95, 0.4); transform: scale(0.95);
         }
 
         .ptt-button.receiving {
-            border-color: #00ff66;
-            box-shadow: 0 0 30px rgba(0, 255, 102, 0.4);
+            border-color: #00ff66; box-shadow: 0 0 35px rgba(0, 255, 102, 0.4);
         }
 
-        .mic-icon {
-            font-size: 3rem;
-            margin-bottom: 8px;
-        }
-
-        .btn-label {
-            font-weight: 700;
-            font-size: 1rem;
-            letter-spacing: 1px;
-        }
-
-        .footer-info {
-            font-size: 0.75rem;
-            color: #555;
-            text-align: center;
-        }
-
-        /* Initial Tap Overlay for Browser Audio Permission */
-        #startModal {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #121212;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-
-        .start-btn {
-            background: #00ffcc;
-            color: #000;
-            border: none;
-            padding: 16px 32px;
-            font-size: 1.1rem;
-            font-weight: 700;
-            border-radius: 30px;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
-        }
+        .btn-label { font-weight: 800; font-size: 0.95rem; letter-spacing: 2px; color: var(--text-main); }
+        .footer-info { font-size: 0.75rem; color: #444; text-align: center; letter-spacing: 1px; }
     </style>
 </head>
 <body>
 
-    <div id="startModal">
-        <button class="start-btn" id="startBtn">TAP TO START TALKIE</button>
+    <div id="bootScreen">
+        <div class="neon-loader-container" id="neonLoader">
+            <span class="neon-char">R</span>
+            <span class="neon-char">3</span>
+            <span class="neon-char">4</span>
+            <span class="neon-char">L</span>
+            <span class="neon-char">_</span>
+            <span class="neon-char">T</span>
+            <span class="neon-char">4</span>
+            <span class="neon-char">L</span>
+            <span class="neon-char">K</span>
+        </div>
+        <div class="boot-status" id="bootStatus">INITIALIZING AUDIO MESH</div>
     </div>
 
     <div class="header">
-        <h1>WALKIE TALKIE</h1>
-        <div class="status" id="statusText">CONNECTING...</div>
+        <h1>R34L_T4LK</h1>
+        <div class="status" id="statusText">CONNECTING</div>
     </div>
 
     <div class="ptt-button" id="pttBtn">
-        <div class="mic-icon">🎙️</div>
         <div class="btn-label" id="btnLabel">HOLD TO TALK</div>
     </div>
 
     <div class="footer-info">
-        Press button or holding Spacebar to talk
+        PUSH BUTTON OR SPACEBAR TO TRANSMIT
     </div>
 
     <script>
@@ -142,23 +131,57 @@
         let micStream;
         let isTransmitting = false;
 
+        const chars = document.querySelectorAll('.neon-char');
+        const bootStatus = document.getElementById('bootStatus');
+        const bootScreen = document.getElementById('bootScreen');
         const pttBtn = document.getElementById('pttBtn');
         const btnLabel = document.getElementById('btnLabel');
         const statusText = document.getElementById('statusText');
-        const startModal = document.getElementById('startModal');
-        const startBtn = document.getElementById('startBtn');
 
-        startBtn.addEventListener('click', async () => {
-            startModal.style.display = 'none';
+        // Futuristic Neon Letter Loading Animation Sequence
+        window.addEventListener('DOMContentLoaded', () => {
+            let activeIdx = 0;
+            const statuses = ["INITIALIZING AUDIO MESH", "CALIBRATING CHANNELS", "SYSTEM READY"];
+            let statusStep = 0;
 
-            try {
-                // Request Microphone Permission
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                setupMediaRecorder();
-                connectWebSocket();
-            } catch (err) {
-                alert("Microphone permission required for walkie talkie!");
-            }
+            const loadInterval = setInterval(() => {
+                chars.forEach((c, idx) => {
+                    if (idx <= activeIdx) {
+                        c.classList.add('active');
+                    } else {
+                        c.classList.remove('active');
+                    }
+                });
+
+                activeIdx++;
+                if (activeIdx >= chars.length) {
+                    activeIdx = 0;
+                    statusStep++;
+                    if (statusStep < statuses.length) {
+                        bootStatus.innerText = statuses[statusStep];
+                    }
+                }
+            }, 120);
+
+            // Auto initialize after load cycle
+            setTimeout(async () => {
+                clearInterval(loadInterval);
+                chars.forEach(c => c.classList.add('active'));
+                bootStatus.innerText = "ONLINE";
+
+                setTimeout(async () => {
+                    bootScreen.style.opacity = '0';
+                    setTimeout(() => bootScreen.style.display = 'none', 800);
+
+                    try {
+                        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        setupMediaRecorder();
+                        connectWebSocket();
+                    } catch (e) {
+                        alert("Microphone permission required.");
+                    }
+                }, 600);
+            }, 3000);
         });
 
         function connectWebSocket() {
@@ -167,7 +190,7 @@
             ws.binaryType = 'arraybuffer';
 
             ws.onopen = () => {
-                statusText.innerText = "ONLINE // READY";
+                statusText.innerText = "ONLINE";
                 statusText.classList.add('online');
             };
 
@@ -178,7 +201,6 @@
             };
 
             ws.onmessage = async (event) => {
-                // Play incoming live voice buffer directly
                 if (event.data instanceof ArrayBuffer) {
                     playAudioBuffer(event.data);
                 }
@@ -197,7 +219,7 @@
         async function playAudioBuffer(buffer) {
             try {
                 pttBtn.classList.add('receiving');
-                btnLabel.innerText = "INCOMING VOICE...";
+                btnLabel.innerText = "RECEIVING";
 
                 const blob = new Blob([buffer], { type: 'audio/webm' });
                 const url = URL.createObjectURL(blob);
@@ -211,7 +233,7 @@
                     }
                 }, 400);
             } catch (err) {
-                console.log("Audio play error:", err);
+                console.log(err);
             }
         }
 
@@ -219,11 +241,11 @@
             if (isTransmitting) return;
             isTransmitting = true;
             pttBtn.classList.add('active');
-            btnLabel.innerText = "TALKING...";
+            btnLabel.innerText = "TRANSMITTING";
             if (navigator.vibrate) navigator.vibrate(40);
 
             if (mediaRecorder && mediaRecorder.state === 'inactive') {
-                mediaRecorder.start(100); // Record & send audio in 100ms chunks
+                mediaRecorder.start(100);
             }
         }
 
@@ -238,13 +260,11 @@
             }
         }
 
-        // Touch & Mouse Listeners
         pttBtn.addEventListener('mousedown', startTalking);
         pttBtn.addEventListener('mouseup', stopTalking);
         pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startTalking(); });
         pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopTalking(); });
 
-        // Spacebar Control
         window.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat) startTalking(); });
         window.addEventListener('keyup', (e) => { if (e.code === 'Space') stopTalking(); });
     </script>
