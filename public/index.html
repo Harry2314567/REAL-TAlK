@@ -103,7 +103,7 @@
 
         .btn-label { font-weight: 800; font-size: 0.95rem; letter-spacing: 2px; color: var(--text-main); font-style: italic; }
 
-        /* Party Sync Button & Overlay */
+        /* Party Sync Control Bar */
         .party-bar {
             width: 100%;
             display: flex;
@@ -126,87 +126,10 @@
             transition: all 0.2s ease;
         }
 
-        .party-btn:active {
+        .party-btn.casting {
             background: var(--purple-party);
             color: #fff;
-            box-shadow: 0 0 25px var(--purple-party);
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 7, 10, 0.95);
-            backdrop-filter: blur(8px);
-            z-index: 2000;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .modal-overlay.active { display: flex; }
-
-        .modal-card {
-            background: #0d1117;
-            border: 2px solid var(--purple-party);
-            border-radius: 10px;
-            width: 100%;
-            max-width: 380px;
-            padding: 20px;
-            box-shadow: 0 0 30px rgba(176,0,255,0.3);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-        }
-
-        .modal-title {
-            font-weight: 900;
-            font-style: italic;
-            font-size: 1.1rem;
-            color: #d88eff;
-            letter-spacing: 2px;
-            margin-bottom: 15px;
-        }
-
-        .member-select-box {
-            width: 100%;
-            max-height: 120px;
-            overflow-y: auto;
-            border: 1px solid rgba(176,0,255,0.4);
-            border-radius: 6px;
-            padding: 8px;
-            margin-bottom: 15px;
-            background: rgba(0,0,0,0.5);
-        }
-
-        .member-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 4px;
-            font-size: 0.8rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .file-input-btn {
-            background: #1a0f2e;
-            border: 1px dashed var(--purple-party);
-            color: #d88eff;
-            padding: 10px;
-            width: 100%;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 0.8rem;
-            cursor: pointer;
-            margin-bottom: 15px;
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 10px; right: 12px;
-            background: transparent; border: none;
-            color: #777; font-size: 1.2rem; cursor: pointer;
+            box-shadow: 0 0 30px var(--purple-party);
         }
 
         .footer-info { font-size: 0.75rem; color: #444; text-align: center; letter-spacing: 1px; }
@@ -217,7 +140,6 @@
 <body>
 
     <audio id="remoteAudio" autoplay playsinline></audio>
-    <audio id="partyAudioPlayer"></audio>
 
     <!-- Automatic Morphing Boot Screen -->
     <div id="bootScreen">
@@ -244,7 +166,7 @@
         </div>
 
         <div class="party-bar">
-            <button class="party-btn" id="openPartyModalBtn">PARTY SYNC</button>
+            <button class="party-btn" id="partyCastBtn">PARTY SYNC // STREAM PHONE AUDIO</button>
         </div>
 
         <div class="footer-info">
@@ -252,32 +174,13 @@
         </div>
     </div>
 
-    <!-- Party Sync Cast Modal -->
-    <div class="modal-overlay" id="partyModal">
-        <div class="modal-card">
-            <button class="close-btn" id="closePartyModalBtn">✕</button>
-            <div class="modal-title">PARTY SYNC CAST</div>
-            <div style="font-size:0.75rem; color:#888; margin-bottom:10px; text-align:center;">SELECT MEMBERS TO CAST AUDIO:</div>
-            
-            <div class="member-select-box" id="memberList">
-                <div class="member-item"><span>RIDER_02</span> <input type="checkbox" checked></div>
-                <div class="member-item"><span>RIDER_03</span> <input type="checkbox" checked></div>
-            </div>
-
-            <label class="file-input-btn">
-                <span>SELECT AUDIO FILE TO BROADCAST</span>
-                <input type="file" id="partyAudioInput" accept="audio/*" style="display:none;">
-            </label>
-
-            <button class="party-btn" id="startPartyCastBtn" style="width:100%;">START CASTING</button>
-        </div>
-    </div>
-
     <script>
         let ws;
         let localStream;
+        let displayStream;
         let peerConnection;
         let isTransmitting = false;
+        let isCastingAudio = false;
 
         const loaderContainer = document.getElementById('neonLoader');
         const chars = document.querySelectorAll('.neon-char');
@@ -287,12 +190,7 @@
         const btnLabel = document.getElementById('btnLabel');
         const statusText = document.getElementById('statusText');
         const remoteAudio = document.getElementById('remoteAudio');
-
-        const partyModal = document.getElementById('partyModal');
-        const openPartyModalBtn = document.getElementById('openPartyModalBtn');
-        const closePartyModalBtn = document.getElementById('closePartyModalBtn');
-        const partyAudioInput = document.getElementById('partyAudioInput');
-        const startPartyCastBtn = document.getElementById('startPartyCastBtn');
+        const partyCastBtn = document.getElementById('partyCastBtn');
 
         const rtcConfig = {
             iceServers: [
@@ -418,8 +316,67 @@
             });
         }
 
+        // PARTY SYNC: Streams YT Music / Internal Phone Audio
+        partyCastBtn.addEventListener('click', async () => {
+            if (!isCastingAudio) {
+                try {
+                    // Capture Phone Display Audio (YT Music / App Audio)
+                    displayStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: true,
+                        audio: { systemAudio: "include" }
+                    });
+
+                    const audioTrack = displayStream.getAudioTracks()[0];
+
+                    if (!audioTrack) {
+                        alert("Please make sure 'Share Audio' is checked when selecting your stream!");
+                        return;
+                    }
+
+                    // Replace microphone sender track with the system audio track
+                    const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+                    if (sender) {
+                        sender.replaceTrack(audioTrack);
+                    } else {
+                        peerConnection.addTrack(audioTrack, displayStream);
+                    }
+
+                    isCastingAudio = true;
+                    partyCastBtn.classList.add('casting');
+                    partyCastBtn.innerText = "CASTING PHONE AUDIO // TAP TO STOP";
+
+                    // Handle user ending display capture via device UI
+                    audioTrack.onended = () => stopPartyCast();
+
+                } catch (err) {
+                    console.log("Audio sharing error or user canceled:", err);
+                }
+            } else {
+                stopPartyCast();
+            }
+        });
+
+        function stopPartyCast() {
+            if (displayStream) {
+                displayStream.getTracks().forEach(track => track.stop());
+            }
+
+            // Revert back to local mic track
+            if (localStream) {
+                const micTrack = localStream.getAudioTracks()[0];
+                const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+                if (sender && micTrack) {
+                    sender.replaceTrack(micTrack);
+                }
+            }
+
+            isCastingAudio = false;
+            partyCastBtn.classList.remove('casting');
+            partyCastBtn.innerText = "PARTY SYNC // STREAM PHONE AUDIO";
+        }
+
         async function startTalking() {
-            if (isTransmitting) return;
+            if (isTransmitting || isCastingAudio) return;
 
             if (!localStream) {
                 try {
@@ -444,45 +401,13 @@
         }
 
         function stopTalking() {
-            if (!isTransmitting || !localStream) return;
+            if (!isTransmitting || !localStream || isCastingAudio) return;
             isTransmitting = false;
             pttBtn.classList.remove('active');
             btnLabel.innerText = "HOLD TO TALK";
 
             localStream.getAudioTracks().forEach(track => track.enabled = false);
         }
-
-        // Party Sync Modal Handlers
-        openPartyModalBtn.addEventListener('click', () => partyModal.classList.add('active'));
-        closePartyModalBtn.addEventListener('click', () => partyModal.classList.remove('active'));
-
-        startPartyCastBtn.addEventListener('click', () => {
-            const file = partyAudioInput.files[0];
-            if (!file) {
-                alert("Select an audio file first!");
-                return;
-            }
-
-            // Stream audio file directly into the WebRTC peer connection
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const player = document.getElementById('partyAudioPlayer');
-            player.src = URL.createObjectURL(file);
-            player.play();
-
-            const source = audioCtx.createMediaElementSource(player);
-            const destination = audioCtx.createMediaStreamDestination();
-            source.connect(destination);
-            source.connect(audioCtx.destination);
-
-            const track = destination.stream.getAudioTracks()[0];
-            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
-            if (sender) {
-                sender.replaceTrack(track);
-            }
-
-            partyModal.classList.remove('active');
-            alert("Casting local music to selected party members!");
-        });
 
         pttBtn.addEventListener('mousedown', startTalking);
         pttBtn.addEventListener('mouseup', stopTalking);
