@@ -1,422 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>        
-    <link rel="manifest" href="/manifest.json">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>R34L_T4LK // Tactical Comms</title>
-    <style>
-        :root {
-            --bg-dark: #05070a;
-            --cyan-glow: #00f0ff;
-            --orange-alert: #ff2a5f;
-            --green-active: #00ff66;
-            --purple-party: #b000ff;
-            --text-main: #e6f1ff;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: monospace;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            overflow: hidden;
-        }
-
-        /* Morphing Boot Screen Overlay */
-        #bootScreen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-dark);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            transition: background-color 0.8s ease;
-        }
-
-        .neon-loader-container {
-            display: flex;
-            gap: 10px;
-            transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-
-        .neon-char {
-            font-size: 3.2rem;
-            font-weight: 900;
-            font-style: italic;
-            color: #121820;
-            transition: font-size 0.8s cubic-bezier(0.25, 1, 0.5, 1), color 0.12s ease-in-out, text-shadow 0.12s ease-in-out;
-        }
-
-        .neon-char.active {
-            color: var(--cyan-glow);
-            text-shadow: 0 0 12px var(--cyan-glow), 0 0 25px var(--cyan-glow), 0 0 50px var(--cyan-glow);
-        }
-
-        /* Main App UI */
-        .app-content {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.6s ease 0.4s, transform 0.6s cubic-bezier(0.25, 1, 0.5, 1) 0.4s;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .app-content.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .header { text-align: center; margin-top: 10px; height: 50px; }
-        .status { font-size: 0.85rem; color: #555; margin-top: 2px; letter-spacing: 2px; }
-        .status.online { color: var(--green-active); text-shadow: 0 0 8px var(--green-active); }
-
-        .ptt-button {
-            width: 200px; height: 200px; border-radius: 50%;
-            background: #0d1117; border: 3px solid var(--cyan-glow);
-            box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            cursor: pointer; transition: all 0.15s ease;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .ptt-button:active, .ptt-button.active {
-            background: #1a080d; border-color: var(--orange-alert);
-            box-shadow: 0 0 40px rgba(255, 42, 95, 0.4); transform: scale(0.95);
-        }
-
-        .ptt-button.receiving {
-            border-color: var(--green-active); box-shadow: 0 0 35px rgba(0, 255, 102, 0.4);
-        }
-
-        .btn-label { font-weight: 800; font-size: 0.95rem; letter-spacing: 2px; color: var(--text-main); font-style: italic; }
-
-        /* Party Sync Control Bar */
-        .party-bar {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-
-        .party-btn {
-            background: rgba(176, 0, 255, 0.12);
-            border: 2px solid var(--purple-party);
-            color: #d88eff;
-            font-family: monospace;
-            font-weight: 800;
-            font-style: italic;
-            padding: 10px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            letter-spacing: 2px;
-            box-shadow: 0 0 15px rgba(176, 0, 255, 0.2);
-            transition: all 0.2s ease;
-        }
-
-        .party-btn.casting {
-            background: var(--purple-party);
-            color: #fff;
-            box-shadow: 0 0 30px var(--purple-party);
-        }
-
-        .footer-info { font-size: 0.75rem; color: #444; text-align: center; letter-spacing: 1px; }
-
-        audio { display: none; }
-    </style>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>R34L_T4LK</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-    <audio id="remoteAudio" autoplay playsinline></audio>
+  <!-- Animated Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div id="loading-text" class="loading-text"></div>
+  </div>
 
-    <!-- Automatic Morphing Boot Screen -->
-    <div id="bootScreen">
-        <div class="neon-loader-container" id="neonLoader">
-            <span class="neon-char">R</span>
-            <span class="neon-char">3</span>
-            <span class="neon-char">4</span>
-            <span class="neon-char">L</span>
-            <span class="neon-char">_</span>
-            <span class="neon-char">T</span>
-            <span class="neon-char">4</span>
-            <span class="neon-char">L</span>
-            <span class="neon-char">K</span>
-        </div>
+  <!-- Main Web App Container -->
+  <div class="app-container">
+    
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="spacer"></div>
+      <div class="title-container">
+        <h1 class="app-title">R34L_T4LK</h1>
+        <span class="status-badge">ONLINE</span>
+      </div>
+      <button id="gear-btn" class="icon-btn">⚙️</button>
+    </header>
+
+    <!-- Circular Hold to Talk Button -->
+    <main class="talk-container">
+      <button id="talk-btn" class="talk-btn">
+        <span id="talk-label">HOLD TO TALK</span>
+      </button>
+    </main>
+
+    <!-- Bottom Trigger Button -->
+    <footer class="bottom-bar">
+      <button id="dual-audio-btn" class="purple-btn">
+        DUAL AUDIO // ROUTE TO WIRE + BT
+      </button>
+    </footer>
+
+  </div>
+
+  <!-- Bottom Slide-up Drawer (Dual Audio Routing) -->
+  <div id="audio-backdrop" class="backdrop"></div>
+  <div id="audio-drawer" class="drawer bottom-drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-header">
+      <h2>Dual Audio Routing Hub</h2>
+      <button id="close-audio-btn" class="close-btn">✕</button>
     </div>
 
-    <div class="app-content" id="appContent">
-        <div class="header">
-            <div class="status" id="statusText">DISCONNECTED</div>
-        </div>
-
-        <div class="ptt-button" id="pttBtn">
-            <div class="btn-label" id="btnLabel">HOLD TO TALK</div>
-        </div>
-
-        <div class="party-bar">
-            <button class="party-btn" id="partyCastBtn">PARTY SYNC // STREAM PHONE AUDIO</button>
-        </div>
-
-        <div class="footer-info">
-            PUSH BUTTON OR SPACEBAR TO TRANSMIT
-        </div>
+    <div class="drawer-section">
+      <label class="section-label">HARDWARE PAIRING MODE</label>
+      <div class="grid-2">
+        <button id="mode-wire-bt" class="mode-btn active">1 Wired + 1 Bluetooth</button>
+        <button id="mode-bt-bt" class="mode-btn">2 Bluetooth Devices</button>
+      </div>
     </div>
 
-    <script>
-        let ws;
-        let localStream;
-        let displayStream;
-        let peerConnection;
-        let isTransmitting = false;
-        let isCastingAudio = false;
+    <div class="drawer-section">
+      <div class="device-card primary">
+        <span class="card-tag primary-tag">PRIMARY OUTPUT (A)</span>
+        <span id="device-a-label" class="card-name">Analog/Type-C Wired Headset</span>
+        <input type="range" id="vol-a" min="0" max="1" step="0.01" value="1" class="slider primary-slider" />
+      </div>
 
-        const loaderContainer = document.getElementById('neonLoader');
-        const chars = document.querySelectorAll('.neon-char');
-        const bootScreen = document.getElementById('bootScreen');
-        const appContent = document.getElementById('appContent');
-        const pttBtn = document.getElementById('pttBtn');
-        const btnLabel = document.getElementById('btnLabel');
-        const statusText = document.getElementById('statusText');
-        const remoteAudio = document.getElementById('remoteAudio');
-        const partyCastBtn = document.getElementById('partyCastBtn');
+      <div class="device-card secondary">
+        <span class="card-tag secondary-tag">SECONDARY OUTPUT (B)</span>
+        <span id="device-b-label" class="card-name">Bluetooth Wireless Audio</span>
+        <input type="range" id="vol-b" min="0" max="1" step="0.01" value="1" class="slider secondary-slider" />
+      </div>
+    </div>
 
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
+    <div class="drawer-section">
+      <label class="section-label">ZERO-LOSS EQUALIZER PRESETS</label>
+      <div class="grid-3">
+        <button id="eq-studio" class="eq-btn active">STUDIO</button>
+        <button id="eq-bass" class="eq-btn">BASS</button>
+        <button id="eq-treble" class="eq-btn">TREBLE</button>
+      </div>
+    </div>
+  </div>
 
-        window.addEventListener('DOMContentLoaded', () => {
-            let activeIdx = 0;
-            const loadInterval = setInterval(() => {
-                chars.forEach((c, idx) => {
-                    if (idx === activeIdx) c.classList.add('active');
-                    else c.classList.remove('active');
-                });
-                activeIdx = (activeIdx + 1) % chars.length;
-            }, 110);
+  <!-- Right Slide-in Panel (Settings & Fixed User QR) -->
+  <div id="settings-backdrop" class="backdrop"></div>
+  <div id="settings-drawer" class="drawer right-drawer">
+    <div class="drawer-header">
+      <h2>Settings & Identity</h2>
+      <button id="close-settings-btn" class="close-btn">✕</button>
+    </div>
 
-            setTimeout(() => {
-                clearInterval(loadInterval);
-                chars.forEach(c => c.classList.add('active'));
-                triggerMorphTransition();
-            }, 5000);
-        });
+    <!-- Fixed User QR Card -->
+    <div class="qr-card">
+      <span class="section-label">YOUR PERMANENT QR IDENTITY</span>
+      <div class="qr-matrix"></div>
+      <span id="user-id-text" class="user-id">R34L-USR-9042</span>
+    </div>
 
-        async function triggerMorphTransition() {
-            const headerEl = document.querySelector('.header');
-            const loaderRect = loaderContainer.getBoundingClientRect();
-            const headerRect = headerEl.getBoundingClientRect();
-            const deltaY = (headerRect.top + 10) - loaderRect.top;
-            const scaleFactor = 1.8 / 3.2;
+    <!-- Link User Section -->
+    <div class="drawer-section">
+      <label class="section-label">LINK PERMANENT USER</label>
+      <button id="scan-qr-btn" class="scan-btn">📷 SCAN USER QR</button>
+      <div class="input-row">
+        <input type="text" id="manual-id-input" placeholder="Or enter user ID..." />
+        <button id="link-id-btn" class="action-btn">LINK</button>
+      </div>
+    </div>
 
-            loaderContainer.style.transform = `translateY(${deltaY}px) scale(${scaleFactor})`;
+    <!-- Linked Friends List -->
+    <div class="drawer-section">
+      <label class="section-label">PERMANENTLY LINKED FRIENDS</label>
+      <div id="linked-users-list" class="linked-list"></div>
+    </div>
+  </div>
 
-            setTimeout(() => {
-                headerEl.insertBefore(loaderContainer, statusText);
-                loaderContainer.style.transform = 'none';
-                loaderContainer.style.margin = '0';
-                loaderContainer.style.gap = '4px';
-                chars.forEach(c => c.style.fontSize = '1.8rem');
-
-                bootScreen.style.background = 'transparent';
-                bootScreen.style.pointerEvents = 'none';
-                appContent.classList.add('visible');
-            }, 800);
-
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-                });
-
-                localStream.getAudioTracks().forEach(track => track.enabled = false);
-
-                setTimeout(() => bootScreen.style.display = 'none', 1400);
-
-                connectWebSocket();
-            } catch (err) {
-                console.log("Mic access pending.");
-            }
-        }
-
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-            ws = new WebSocket(protocol + window.location.host);
-
-            ws.onopen = () => {
-                statusText.innerText = "ONLINE";
-                statusText.classList.add('online');
-                initPeerConnection();
-            };
-
-            ws.onclose = () => {
-                statusText.innerText = "DISCONNECTED";
-                statusText.classList.remove('online');
-                setTimeout(connectWebSocket, 2000);
-            };
-
-            ws.onmessage = async (event) => {
-                const message = JSON.parse(event.data);
-
-                if (message.offer) {
-                    if (!peerConnection) initPeerConnection();
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    ws.send(JSON.stringify({ answer }));
-                } else if (message.answer) {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-                } else if (message.candidate) {
-                    if (peerConnection) {
-                        try {
-                            await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                        } catch (e) {}
-                    }
-                }
-            };
-        }
-
-        function initPeerConnection() {
-            peerConnection = new RTCPeerConnection(rtcConfig);
-
-            if (localStream) {
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-            }
-
-            peerConnection.ontrack = (event) => {
-                remoteAudio.srcObject = event.streams[0];
-                remoteAudio.play().catch(e => console.log(e));
-                pttBtn.classList.add('receiving');
-                btnLabel.innerText = "RECEIVING";
-            };
-
-            peerConnection.onicecandidate = (event) => {
-                if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ candidate: event.candidate }));
-                }
-            };
-
-            peerConnection.createOffer().then(offer => {
-                return peerConnection.setLocalDescription(offer);
-            }).then(() => {
-                ws.send(JSON.stringify({ offer: peerConnection.localDescription }));
-            });
-        }
-
-        // PARTY SYNC: Streams YT Music / Internal Phone Audio
-        partyCastBtn.addEventListener('click', async () => {
-            if (!isCastingAudio) {
-                try {
-                    // Capture Phone Display Audio (YT Music / App Audio)
-                    displayStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: true,
-                        audio: { systemAudio: "include" }
-                    });
-
-                    const audioTrack = displayStream.getAudioTracks()[0];
-
-                    if (!audioTrack) {
-                        alert("Please make sure 'Share Audio' is checked when selecting your stream!");
-                        return;
-                    }
-
-                    // Replace microphone sender track with the system audio track
-                    const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
-                    if (sender) {
-                        sender.replaceTrack(audioTrack);
-                    } else {
-                        peerConnection.addTrack(audioTrack, displayStream);
-                    }
-
-                    isCastingAudio = true;
-                    partyCastBtn.classList.add('casting');
-                    partyCastBtn.innerText = "CASTING PHONE AUDIO // TAP TO STOP";
-
-                    // Handle user ending display capture via device UI
-                    audioTrack.onended = () => stopPartyCast();
-
-                } catch (err) {
-                    console.log("Audio sharing error or user canceled:", err);
-                }
-            } else {
-                stopPartyCast();
-            }
-        });
-
-        function stopPartyCast() {
-            if (displayStream) {
-                displayStream.getTracks().forEach(track => track.stop());
-            }
-
-            // Revert back to local mic track
-            if (localStream) {
-                const micTrack = localStream.getAudioTracks()[0];
-                const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
-                if (sender && micTrack) {
-                    sender.replaceTrack(micTrack);
-                }
-            }
-
-            isCastingAudio = false;
-            partyCastBtn.classList.remove('casting');
-            partyCastBtn.innerText = "PARTY SYNC // STREAM PHONE AUDIO";
-        }
-
-        async function startTalking() {
-            if (isTransmitting || isCastingAudio) return;
-
-            if (!localStream) {
-                try {
-                    localStream = await navigator.mediaDevices.getUserMedia({
-                        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-                    });
-                    if (peerConnection) {
-                        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                    }
-                } catch (e) {
-                    alert("Microphone permission required.");
-                    return;
-                }
-            }
-
-            isTransmitting = true;
-            pttBtn.classList.add('active');
-            btnLabel.innerText = "TRANSMITTING";
-            if (navigator.vibrate) navigator.vibrate(40);
-
-            localStream.getAudioTracks().forEach(track => track.enabled = true);
-        }
-
-        function stopTalking() {
-            if (!isTransmitting || !localStream || isCastingAudio) return;
-            isTransmitting = false;
-            pttBtn.classList.remove('active');
-            btnLabel.innerText = "HOLD TO TALK";
-
-            localStream.getAudioTracks().forEach(track => track.enabled = false);
-        }
-
-        pttBtn.addEventListener('mousedown', startTalking);
-        pttBtn.addEventListener('mouseup', stopTalking);
-        pttBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startTalking(); });
-        pttBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopTalking(); });
-
-        window.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat) startTalking(); });
-        window.addEventListener('keyup', (e) => { if (e.code === 'Space') stopTalking(); });
-    </script>
+  <!-- Scripts -->
+  <script src="audioEngine.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
