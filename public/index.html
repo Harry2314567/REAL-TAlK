@@ -10,6 +10,7 @@
             --cyan-glow: #00f0ff;
             --orange-alert: #ff2a5f;
             --green-active: #00ff66;
+            --purple-party: #b000ff;
             --text-main: #e6f1ff;
         }
 
@@ -24,7 +25,7 @@
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            padding: 30px 20px;
+            padding: 20px;
             overflow: hidden;
         }
 
@@ -60,7 +61,7 @@
             text-shadow: 0 0 12px var(--cyan-glow), 0 0 25px var(--cyan-glow), 0 0 50px var(--cyan-glow);
         }
 
-        /* Main App UI (Hidden initially for Morph) */
+        /* Main App UI */
         .app-content {
             opacity: 0;
             transform: translateY(20px);
@@ -83,7 +84,7 @@
         .status.online { color: var(--green-active); text-shadow: 0 0 8px var(--green-active); }
 
         .ptt-button {
-            width: 220px; height: 220px; border-radius: 50%;
+            width: 200px; height: 200px; border-radius: 50%;
             background: #0d1117; border: 3px solid var(--cyan-glow);
             box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
             display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -101,6 +102,113 @@
         }
 
         .btn-label { font-weight: 800; font-size: 0.95rem; letter-spacing: 2px; color: var(--text-main); font-style: italic; }
+
+        /* Party Sync Button & Overlay */
+        .party-bar {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .party-btn {
+            background: rgba(176, 0, 255, 0.12);
+            border: 2px solid var(--purple-party);
+            color: #d88eff;
+            font-family: monospace;
+            font-weight: 800;
+            font-style: italic;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            letter-spacing: 2px;
+            box-shadow: 0 0 15px rgba(176, 0, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .party-btn:active {
+            background: var(--purple-party);
+            color: #fff;
+            box-shadow: 0 0 25px var(--purple-party);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 7, 10, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal-card {
+            background: #0d1117;
+            border: 2px solid var(--purple-party);
+            border-radius: 10px;
+            width: 100%;
+            max-width: 380px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(176,0,255,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .modal-title {
+            font-weight: 900;
+            font-style: italic;
+            font-size: 1.1rem;
+            color: #d88eff;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+        }
+
+        .member-select-box {
+            width: 100%;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid rgba(176,0,255,0.4);
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 15px;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .member-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 4px;
+            font-size: 0.8rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .file-input-btn {
+            background: #1a0f2e;
+            border: 1px dashed var(--purple-party);
+            color: #d88eff;
+            padding: 10px;
+            width: 100%;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px; right: 12px;
+            background: transparent; border: none;
+            color: #777; font-size: 1.2rem; cursor: pointer;
+        }
+
         .footer-info { font-size: 0.75rem; color: #444; text-align: center; letter-spacing: 1px; }
 
         audio { display: none; }
@@ -109,6 +217,7 @@
 <body>
 
     <audio id="remoteAudio" autoplay playsinline></audio>
+    <audio id="partyAudioPlayer"></audio>
 
     <!-- Automatic Morphing Boot Screen -->
     <div id="bootScreen">
@@ -134,8 +243,33 @@
             <div class="btn-label" id="btnLabel">HOLD TO TALK</div>
         </div>
 
+        <div class="party-bar">
+            <button class="party-btn" id="openPartyModalBtn">PARTY SYNC</button>
+        </div>
+
         <div class="footer-info">
             PUSH BUTTON OR SPACEBAR TO TRANSMIT
+        </div>
+    </div>
+
+    <!-- Party Sync Cast Modal -->
+    <div class="modal-overlay" id="partyModal">
+        <div class="modal-card">
+            <button class="close-btn" id="closePartyModalBtn">✕</button>
+            <div class="modal-title">PARTY SYNC CAST</div>
+            <div style="font-size:0.75rem; color:#888; margin-bottom:10px; text-align:center;">SELECT MEMBERS TO CAST AUDIO:</div>
+            
+            <div class="member-select-box" id="memberList">
+                <div class="member-item"><span>RIDER_02</span> <input type="checkbox" checked></div>
+                <div class="member-item"><span>RIDER_03</span> <input type="checkbox" checked></div>
+            </div>
+
+            <label class="file-input-btn">
+                <span>SELECT AUDIO FILE TO BROADCAST</span>
+                <input type="file" id="partyAudioInput" accept="audio/*" style="display:none;">
+            </label>
+
+            <button class="party-btn" id="startPartyCastBtn" style="width:100%;">START CASTING</button>
         </div>
     </div>
 
@@ -154,6 +288,12 @@
         const statusText = document.getElementById('statusText');
         const remoteAudio = document.getElementById('remoteAudio');
 
+        const partyModal = document.getElementById('partyModal');
+        const openPartyModalBtn = document.getElementById('openPartyModalBtn');
+        const closePartyModalBtn = document.getElementById('closePartyModalBtn');
+        const partyAudioInput = document.getElementById('partyAudioInput');
+        const startPartyCastBtn = document.getElementById('startPartyCastBtn');
+
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -161,21 +301,16 @@
             ]
         };
 
-        // Automatic 5-Second Neon Loading Sequence
         window.addEventListener('DOMContentLoaded', () => {
             let activeIdx = 0;
             const loadInterval = setInterval(() => {
                 chars.forEach((c, idx) => {
-                    if (idx === activeIdx) {
-                        c.classList.add('active');
-                    } else {
-                        c.classList.remove('active');
-                    }
+                    if (idx === activeIdx) c.classList.add('active');
+                    else c.classList.remove('active');
                 });
                 activeIdx = (activeIdx + 1) % chars.length;
             }, 110);
 
-            // Trigger smooth morph transition automatically at 5 seconds
             setTimeout(() => {
                 clearInterval(loadInterval);
                 chars.forEach(c => c.classList.add('active'));
@@ -184,12 +319,11 @@
         });
 
         async function triggerMorphTransition() {
-            // Smooth PowerPoint-style Morph Transition
             const headerEl = document.querySelector('.header');
             const loaderRect = loaderContainer.getBoundingClientRect();
             const headerRect = headerEl.getBoundingClientRect();
             const deltaY = (headerRect.top + 10) - loaderRect.top;
-            const scaleFactor = 1.8 / 3.2; // Shrink from 3.2rem down to header size (~1.8rem)
+            const scaleFactor = 1.8 / 3.2;
 
             loaderContainer.style.transform = `translateY(${deltaY}px) scale(${scaleFactor})`;
 
@@ -212,13 +346,11 @@
 
                 localStream.getAudioTracks().forEach(track => track.enabled = false);
 
-                setTimeout(() => {
-                    bootScreen.style.display = 'none';
-                }, 1400);
+                setTimeout(() => bootScreen.style.display = 'none', 1400);
 
                 connectWebSocket();
             } catch (err) {
-                console.log("Microphone access pending browser gesture.");
+                console.log("Mic access pending.");
             }
         }
 
@@ -289,7 +421,6 @@
         async function startTalking() {
             if (isTransmitting) return;
 
-            // Request audio permission on first PTT press if not granted yet during auto-boot
             if (!localStream) {
                 try {
                     localStream = await navigator.mediaDevices.getUserMedia({
@@ -320,6 +451,38 @@
 
             localStream.getAudioTracks().forEach(track => track.enabled = false);
         }
+
+        // Party Sync Modal Handlers
+        openPartyModalBtn.addEventListener('click', () => partyModal.classList.add('active'));
+        closePartyModalBtn.addEventListener('click', () => partyModal.classList.remove('active'));
+
+        startPartyCastBtn.addEventListener('click', () => {
+            const file = partyAudioInput.files[0];
+            if (!file) {
+                alert("Select an audio file first!");
+                return;
+            }
+
+            // Stream audio file directly into the WebRTC peer connection
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const player = document.getElementById('partyAudioPlayer');
+            player.src = URL.createObjectURL(file);
+            player.play();
+
+            const source = audioCtx.createMediaElementSource(player);
+            const destination = audioCtx.createMediaStreamDestination();
+            source.connect(destination);
+            source.connect(audioCtx.destination);
+
+            const track = destination.stream.getAudioTracks()[0];
+            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'audio');
+            if (sender) {
+                sender.replaceTrack(track);
+            }
+
+            partyModal.classList.remove('active');
+            alert("Casting local music to selected party members!");
+        });
 
         pttBtn.addEventListener('mousedown', startTalking);
         pttBtn.addEventListener('mouseup', stopTalking);
