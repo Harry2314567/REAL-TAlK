@@ -1,13 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
   const fullText = "R34L_T4LK";
   let configMode = 'wire_bt';
-  let fixedUserId = 'R34L-USR-9042';
-  let linkedUsers = ['R34L-USR-1104'];
+  let fixedUserId = 'R34L-USR-' + Math.floor(1000 + Math.random() * 9000);
+  let linkedUsers = [];
 
+  // DOM Elements
   const loadingScreen = document.getElementById('loading-screen');
   const loadingText = document.getElementById('loading-text');
   const talkBtn = document.getElementById('talk-btn');
   const talkLabel = document.getElementById('talk-label');
+  const statusBadge = document.querySelector('.status-badge');
+  const userIdText = document.getElementById('user-id-text');
 
   const gearBtn = document.getElementById('gear-btn');
   const dualAudioBtn = document.getElementById('dual-audio-btn');
@@ -35,7 +38,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const linkIdBtn = document.getElementById('link-id-btn');
   const linkedUsersList = document.getElementById('linked-users-list');
 
-  // Loading animation
+  // Display Generated User Identity
+  if (userIdText) userIdText.innerText = fixedUserId;
+
+  // 1. Establish WebSocket Connection for Audio Stream
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${protocol}//${window.location.host}`);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => {
+    if (statusBadge) {
+      statusBadge.innerText = 'ONLINE';
+      statusBadge.style.color = '#00ff66';
+    }
+    audioEngine.init(ws);
+  };
+
+  ws.onclose = () => {
+    if (statusBadge) {
+      statusBadge.innerText = 'OFFLINE';
+      statusBadge.style.color = '#ff3366';
+    }
+  };
+
+  ws.onmessage = (event) => {
+    if (event.data instanceof ArrayBuffer) {
+      audioEngine.playReceivedAudio(event.data);
+    }
+  };
+
+  // 2. Animated Loading Screen
   fullText.split('').forEach((char) => {
     const span = document.createElement('span');
     span.classList.add('char');
@@ -51,28 +83,34 @@ document.addEventListener('DOMContentLoaded', () => {
       charIdx++;
     } else {
       clearInterval(timer);
-      setTimeout(() => { loadingScreen.style.display = 'none'; }, 600);
+      setTimeout(() => { loadingScreen.style.display = 'none'; }, 500);
     }
-  }, 150);
+  }, 120);
 
-  // Talk Button
-  const startTalk = () => {
-    audioEngine.init();
+  // 3. Functional Hold to Talk Controls
+  const startTalk = (e) => {
+    if (e) e.preventDefault();
     talkBtn.classList.add('active');
     talkLabel.innerText = 'TRANSMITTING...';
+    audioEngine.startTransmission();
   };
 
-  const stopTalk = () => {
+  const stopTalk = (e) => {
+    if (e) e.preventDefault();
     talkBtn.classList.remove('active');
     talkLabel.innerText = 'HOLD TO TALK';
+    audioEngine.stopTransmission();
   };
 
   talkBtn.addEventListener('mousedown', startTalk);
   talkBtn.addEventListener('mouseup', stopTalk);
-  talkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startTalk(); });
-  talkBtn.addEventListener('touchend', stopTalk);
+  talkBtn.addEventListener('mouseleave', stopTalk);
 
-  // Audio Drawer Toggles
+  talkBtn.addEventListener('touchstart', startTalk, { passive: false });
+  talkBtn.addEventListener('touchend', stopTalk);
+  talkBtn.addEventListener('touchcancel', stopTalk);
+
+  // 4. Slide Drawer Handlers
   dualAudioBtn.addEventListener('click', () => {
     audioDrawer.classList.add('open');
     audioBackdrop.classList.add('open');
@@ -86,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
   closeAudioBtn.addEventListener('click', closeAudio);
   audioBackdrop.addEventListener('click', closeAudio);
 
-  // Settings Drawer Toggles
   gearBtn.addEventListener('click', () => {
     settingsDrawer.classList.add('open');
     settingsBackdrop.classList.add('open');
@@ -100,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
   closeSettingsBtn.addEventListener('click', closeSettings);
   settingsBackdrop.addEventListener('click', closeSettings);
 
-  // Hardware Modes
+  // 5. Hardware Mode and Volume Control Events
   modeWireBt.addEventListener('click', () => {
     configMode = 'wire_bt';
     modeWireBt.classList.add('active');
@@ -131,13 +168,16 @@ document.addEventListener('DOMContentLoaded', () => {
   eqBass.addEventListener('click', () => { setEqActive(eqBass); audioEngine.setPreset('bass'); });
   eqTreble.addEventListener('click', () => { setEqActive(eqTreble); audioEngine.setPreset('treble'); });
 
-  // QR matrix render
+  // 6. QR Matrix Generation & Friend Linking
   const qrMatrix = document.querySelector('.qr-matrix');
-  for (let i = 0; i < 25; i++) {
-    const dot = document.createElement('div');
-    dot.classList.add('qr-dot');
-    if (i % 2 === 0 || i % 7 === 0) dot.classList.add('cyan');
-    qrMatrix.appendChild(dot);
+  if (qrMatrix) {
+    qrMatrix.innerHTML = '';
+    for (let i = 0; i < 25; i++) {
+      const dot = document.createElement('div');
+      dot.classList.add('qr-dot');
+      if (i % 2 === 0 || i % 7 === 0) dot.classList.add('cyan');
+      qrMatrix.appendChild(dot);
+    }
   }
 
   const renderLinkedUsers = () => {
@@ -173,8 +213,8 @@ document.addEventListener('DOMContentLoaded', () => {
   scanQrBtn.addEventListener('click', () => {
     scanQrBtn.innerText = 'SCANNING QR CAM...';
     setTimeout(() => {
-      addUser('R34L-USR-8821');
+      addUser('R34L-USR-' + Math.floor(1000 + Math.random() * 9000));
       scanQrBtn.innerText = '📷 SCAN USER QR';
-    }, 1500);
+    }, 1200);
   });
 });
